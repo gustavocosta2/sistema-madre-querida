@@ -113,6 +113,64 @@ def criar_pedido(pedido_in: schemas.PedidoCreate, db: Session = Depends(database
         print(f"ERRO CRÍTICO NO BANCO: {str(e)}") # Isso vai aparecer no seu terminal
         raise HTTPException(status_code=400, detail=f"Erro ao salvar pedido: {str(e)}")
 
+# --- NOVA ROTA: LISTAR PEDIDOS PARA A COZINHA ---
+@app.get("/pedidos/ativos")
+def listar_pedidos_ativos(db: Session = Depends(database.get_db)):
+    # Busca pedidos que não foram Finalizados ou Cancelados
+    pedidos = db.query(models.Pedido).filter(
+        models.Pedido.status.notin_(["Finalizado", "Cancelado"])
+    ).order_by(models.Pedido.data_hora_criacao.asc()).all()
+    
+    resultado = []
+    for p in pedidos:
+        itens_formatados = []
+        for item in p.itens:
+            # Busca detalhes se for pizza
+            detalhe = item.detalhe_pizza
+            sabor_nome = "Desconhecido"
+            tamanho_nome = "N/A"
+            borda_nome = "N/A"
+            
+            if detalhe:
+                tamanho_nome = detalhe.tamanho.nome_tamanho
+                borda_nome = detalhe.borda.tipo if detalhe.borda else "Sem Borda"
+                # Pega o primeiro sabor (simplificado)
+                if detalhe.sabores:
+                    sabor_nome = detalhe.sabores[0].sabor.nome_sabor
+            
+            itens_formatados.append({
+                "sabor": sabor_nome,
+                "tamanho": tamanho_nome,
+                "borda": borda_nome,
+                "quantidade": item.quantidade
+            })
+            
+        resultado.append({
+            "id_pedido": p.id_pedido,
+            "status": p.status,
+            "data_hora": p.data_hora_criacao,
+            "itens": itens_formatados
+        })
+    return resultado
+
+# --- NOVA ROTA: ATUALIZAR STATUS ---
+@app.patch("/pedidos/{id_pedido}/status")
+def atualizar_status(id_pedido: int, novo_status: str, db: Session = Depends(database.get_db)):
+    pedido = db.query(models.Pedido).filter(models.Pedido.id_pedido == id_pedido).first()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    
+    pedido.status = novo_status
+    
+    # Registra no histórico
+    historico = models.HistoricoStatusPedido(
+        id_pedido=id_pedido,
+        status=novo_status
+    )
+    db.add(historico)
+    db.commit()
+    return {"status": "Atualizado", "novo_status": novo_status}
+
 if __name__ == "__main__":
     import uvicorn
     # Importante: rodar na porta 8000

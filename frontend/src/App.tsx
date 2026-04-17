@@ -1,268 +1,217 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Pizza, ShoppingCart, User, Plus, X, Check, AlertCircle } from 'lucide-react'
+import { Pizza, ShoppingCart, Plus, X, Check, ChefHat, Clock, ArrowRight } from 'lucide-react'
 
-// Interfaces
-interface Sabor {
-  id_sabor: number;
-  nome_sabor: string;
-  ingredientes: string;
-}
+// --- INTERFACES ---
+interface Sabor { id_sabor: number; nome_sabor: string; ingredientes: string; }
+interface Tamanho { id_tamanho: number; nome_tamanho: string; }
+interface Borda { id_borda: number; tipo: string; preco_adicional: string; }
+interface Preco { id_sabor: number; id_tamanho: number; preco_base: string; }
+interface ItemCarrinho { id: string; id_sabor: number; id_tamanho: number; id_borda: number; nome: string; tamanho: string; borda: string; preco: number; }
 
-interface Tamanho {
-  id_tamanho: number;
-  nome_tamanho: string;
-  qtd_sabor_max: number;
-}
-
-interface Borda {
-  id_borda: number;
-  tipo: string;
-  preco_adicional: string;
-}
-
-interface Preco {
-  id_sabor: number;
-  id_tamanho: number;
-  preco_base: string;
-}
-
-interface ItemCarrinho {
-  id: string;
-  id_sabor: number;
-  id_tamanho: number;
-  id_borda: number;
-  nome: string;
-  tamanho: string;
-  borda: string;
-  preco: number;
+interface PedidoAtivo {
+  id_pedido: number;
+  status: string;
+  data_hora: string;
+  itens: {
+    sabor: string;
+    tamanho: string;
+    borda: string;
+    quantidade: number;
+  }[];
 }
 
 function App() {
+  const [view, setView] = useState<'pdv' | 'cozinha'>('pdv')
+  const [loading, setLoading] = useState(true)
+  
+  // Dados fundamentais da API
   const [sabores, setSabores] = useState<Sabor[]>([])
   const [tamanhos, setTamanhos] = useState<Tamanho[]>([])
   const [bordas, setBordas] = useState<Borda[]>([])
   const [precos, setPrecos] = useState<Preco[]>([])
-  const [carrinho, setCarrinho] = useState<ItemCarrinho[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [enviando, setEnviando] = useState(false)
 
-  // Estado para o Modal
+  // Estado das Telas
+  const [carrinho, setCarrinho] = useState<ItemCarrinho[]>([])
+  const [pedidosCozinha, setPedidosCozinha] = useState<PedidoAtivo[]>([])
   const [saborSelecionado, setSaborSelecionado] = useState<Sabor | null>(null)
   const [tamanhoEscolhido, setTamanhoEscolhido] = useState<Tamanho | null>(null)
   const [bordaEscolhida, setBordaEscolhida] = useState<Borda | null>(null)
 
+  // 1. Carregar Dados Iniciais
   useEffect(() => {
-    const fetchData = async () => {
+    async function init() {
       try {
-        setLoading(true)
-        const [resSabores, resTamanhos, resBordas, resPrecos] = await Promise.all([
+        const [s, t, b, p] = await Promise.all([
           axios.get('http://localhost:8000/sabores'),
           axios.get('http://localhost:8000/tamanhos'),
           axios.get('http://localhost:8000/bordas'),
           axios.get('http://localhost:8000/precos')
         ])
-        setSabores(resSabores.data)
-        setTamanhos(resTamanhos.data)
-        setBordas(resBordas.data)
-        setPrecos(resPrecos.data)
-        setError(null)
+        setSabores(s.data || []);
+        setTamanhos(t.data || []);
+        setBordas(b.data || []);
+        setPrecos(p.data || []);
+        setLoading(false)
       } catch (err) {
-        console.error("Erro na API:", err)
-        setError("Não foi possível conectar ao servidor da pizzaria.")
-      } finally {
+        console.error("API Error", err)
+        // Mesmo com erro, paramos o loading para mostrar a tela (mesmo que vazia)
         setLoading(false)
       }
     }
-    fetchData()
+    init()
   }, [])
 
-  const abrirCustomizacao = (sabor: Sabor) => {
+  // 2. Polling da Cozinha
+  useEffect(() => {
+    let timer: any;
+    if (view === 'cozinha') {
+      const load = () => axios.get('http://localhost:8000/pedidos/ativos').then(res => setPedidosCozinha(res.data || []))
+      load()
+      timer = setInterval(load, 5000)
+    }
+    return () => clearInterval(timer)
+  }, [view])
+
+  const abrirModal = (sabor: Sabor) => {
     setSaborSelecionado(sabor)
-    const grande = tamanhos.find(t => t.nome_tamanho === 'Grande') || tamanhos[0]
-    setTamanhoEscolhido(grande || null)
-    setBordaEscolhida(bordas[0] || null)
+    // Proteção: só seleciona se houver dados
+    if (tamanhos.length > 0) setTamanhoEscolhido(tamanhos.find(x => x.nome_tamanho === 'Grande') || tamanhos[0])
+    if (bordas.length > 0) setBordaEscolhida(bordas[0])
   }
 
-  const calcularPrecoAtual = () => {
+  const calcularPreco = () => {
     if (!saborSelecionado || !tamanhoEscolhido) return 0
-    const precoMatriz = precos.find(
-      p => p.id_sabor === saborSelecionado.id_sabor && p.id_tamanho === tamanhoEscolhido.id_tamanho
-    )
-    const base = precoMatriz ? parseFloat(precoMatriz.preco_base) : 0
-    const adicionalBorda = bordaEscolhida ? parseFloat(bordaEscolhida.preco_adicional) : 0
-    return base + adicionalBorda
+    const itemPreco = precos.find(p => p.id_sabor === saborSelecionado.id_sabor && p.id_tamanho === tamanhoEscolhido.id_tamanho)
+    const base = itemPreco ? parseFloat(itemPreco.preco_base) : 0
+    const extra = bordaEscolhida ? parseFloat(bordaEscolhida.preco_adicional) : 0
+    return base + extra
   }
 
-  const confirmarAdicao = () => {
+  const adicionarAoCarrinho = () => {
     if (!saborSelecionado || !tamanhoEscolhido || !bordaEscolhida) return
-    const novoItem: ItemCarrinho = {
-      id: Math.random().toString(36).substring(2, 11),
+    const novo: ItemCarrinho = {
+      id: Math.random().toString(36).substring(7),
       id_sabor: saborSelecionado.id_sabor,
       id_tamanho: tamanhoEscolhido.id_tamanho,
       id_borda: bordaEscolhida.id_borda,
       nome: saborSelecionado.nome_sabor,
       tamanho: tamanhoEscolhido.nome_tamanho,
       borda: bordaEscolhida.tipo,
-      preco: calcularPrecoAtual()
+      preco: calcularPreco()
     }
-    setCarrinho([...carrinho, novoItem])
+    setCarrinho([...carrinho, novo])
     setSaborSelecionado(null)
   }
 
-  const finalizarPedido = async () => {
-    if (carrinho.length === 0) return
-    
-    setEnviando(true)
-    try {
-      const payload = {
-        cpf_cliente: "111.111.111-11", // Usando o cliente de teste padrão
-        itens: carrinho.map(item => ({
-          id_sabor: item.id_sabor,
-          id_tamanho: item.id_tamanho,
-          id_borda: item.id_borda,
-          preco: item.preco
-        }))
-      }
-
-      const response = await axios.post('http://localhost:8000/pedidos', payload)
-      alert(`Sucesso! Pedido #${response.data.id_pedido} enviado para a cozinha.`)
-      setCarrinho([]) // Limpa o carrinho
-    } catch (err) {
-      console.error("Erro ao enviar pedido:", err)
-      alert("Erro ao finalizar pedido. Tente novamente.")
-    } finally {
-      setEnviando(false)
-    }
+  const mudarStatus = async (id: number, atual: string) => {
+    const map: any = { "Recebido": "Em Preparo", "Em Preparo": "Aguardando Entrega", "Aguardando Entrega": "Finalizado" }
+    await axios.patch(`http://localhost:8000/pedidos/${id}/status?novo_status=${map[atual]}`)
+    const res = await axios.get('http://localhost:8000/pedidos/ativos')
+    setPedidosCozinha(res.data || [])
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-4">
-        <div className="text-center max-w-md bg-red-50 p-8 rounded-3xl border-2 border-red-200">
-          <AlertCircle size={64} className="text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-black text-red-700 uppercase">Erro de Conexão</h2>
-          <p className="mt-4 text-red-600 font-medium">{error}</p>
-          <button onClick={() => window.location.reload()} className="mt-6 bg-red-600 text-white px-6 py-3 rounded-xl font-bold">
-            Tentar Novamente
-          </button>
-        </div>
-      </div>
-    )
-  }
+  if (loading) return <div style={{height: '100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f3f4f6', fontWeight:'bold'}}>CONECTANDO À PIZZARIA...</div>
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100 overflow-hidden">
-      <header className="bg-madre-red text-white p-4 flex justify-between items-center shadow-lg shrink-0">
-        <h1 className="text-xl font-black flex items-center gap-2 tracking-tighter uppercase">
-          <Pizza className="rotate-12" /> Madre Querida PDV
-        </h1>
-        <div className="bg-black/20 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2">
-          <User size={14} /> ADMIN
+    <div className="h-screen w-full flex flex-col bg-gray-100 overflow-hidden font-sans text-gray-900">
+      {/* NAVBAR */}
+      <header className="bg-madre-red text-white p-3 flex justify-between items-center shadow-md z-50">
+        <div className="flex items-center gap-4">
+          <span className="font-black text-xl flex items-center gap-2 uppercase italic tracking-tighter"><Pizza size={24}/> Madre Querida</span>
+          <div className="flex bg-black/20 p-1 rounded-lg">
+            <button onClick={() => setView('pdv')} className={`px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${view === 'pdv' ? 'bg-white text-madre-red shadow' : 'text-white'}`}>Vendas</button>
+            <button onClick={() => setView('cozinha')} className={`px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${view === 'cozinha' ? 'bg-white text-madre-red shadow' : 'text-white'}`}>Cozinha</button>
+          </div>
         </div>
       </header>
 
-      <div className="flex-1 flex overflow-hidden">
-        {/* CARDÁPIO */}
-        <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {view === 'pdv' ? (
+        <div className="flex-1 flex overflow-hidden">
+          {/* CATALOGO */}
+          <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 content-start">
             {sabores.map(s => (
-              <button
-                key={s.id_sabor}
-                onClick={() => abrirCustomizacao(s)}
-                className="bg-white p-5 rounded-2xl shadow-sm hover:shadow-md transition-all text-left border-2 border-transparent hover:border-madre-red"
-              >
+              <button key={s.id_sabor} onClick={() => abrirModal(s)} className="bg-white p-6 rounded-3xl shadow-sm border-2 border-transparent hover:border-madre-red transition-all text-left">
                 <h3 className="font-black text-lg uppercase">{s.nome_sabor}</h3>
-                <p className="text-xs text-gray-500 mt-1 line-clamp-2">{s.ingredientes}</p>
-                <div className="mt-4 flex justify-between items-center">
-                  <span className="text-madre-green font-black">A partir R$ 25,00</span>
-                  <div className="bg-gray-100 p-2 rounded-lg text-madre-red"><Plus size={20} /></div>
-                </div>
+                <p className="text-[10px] text-gray-400 mt-1 mb-4 uppercase leading-tight line-clamp-2">{s.ingredientes}</p>
+                <div className="flex justify-between items-center"><span className="text-madre-green font-black text-xl">R$ 25,00+</span><div className="bg-gray-100 p-2 rounded-xl text-madre-red"><Plus size={20}/></div></div>
               </button>
             ))}
           </div>
-        </div>
-
-        {/* CARRINHO */}
-        <div className="w-80 lg:w-96 bg-white border-l shadow-xl flex flex-col shrink-0">
-          <div className="p-4 bg-gray-50 border-b flex justify-between items-center">
-            <h2 className="font-black text-sm uppercase flex items-center gap-2"><ShoppingCart size={16} /> Pedido</h2>
-            <span className="bg-madre-red text-white text-[10px] px-2 py-0.5 rounded font-black">{carrinho.length}</span>
+          {/* CARRINHO */}
+          <div className="w-80 lg:w-96 bg-white border-l shadow-2xl flex flex-col shrink-0">
+             <div className="p-4 bg-gray-50 border-b font-black text-xs uppercase flex justify-between"><span>Pedido Atual</span><span className="text-madre-red">{carrinho.length} itens</span></div>
+             <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {carrinho.map(i => (
+                  <div key={i.id} className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                    <p className="font-black text-[10px] uppercase">{i.nome}</p>
+                    <p className="text-[8px] text-gray-400 font-bold uppercase">{i.tamanho} • {i.borda}</p>
+                    <div className="flex justify-between items-end mt-1">
+                      <button onClick={() => setCarrinho(carrinho.filter(x => x.id !== i.id))} className="text-[8px] text-red-500 font-black uppercase underline">Remover</button>
+                      <span className="text-sm font-black text-madre-green">R$ {i.preco.toFixed(2)}</span>
+                    </div>
+                  </div>
+                ))}
+             </div>
+             <div className="p-6 bg-gray-50 border-t space-y-4">
+                <div className="flex justify-between items-baseline"><span className="text-[10px] font-black text-gray-400 uppercase">Total</span><span className="text-3xl font-black">R$ {carrinho.reduce((a,b) => a+b.preco, 0).toFixed(2)}</span></div>
+                <button onClick={() => axios.post('http://localhost:8000/pedidos', { itens: carrinho.map(c => ({ id_sabor: c.id_sabor, id_tamanho: c.id_tamanho, id_borda: c.id_borda, preco: c.preco })) }).then(() => { alert("Sucesso!"); setCarrinho([]) })} disabled={carrinho.length === 0} className="w-full bg-madre-green text-white py-4 rounded-2xl font-black text-lg uppercase shadow-lg">Finalizar</button>
+             </div>
           </div>
-          
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {carrinho.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-gray-300 italic text-sm text-center">
-                <ShoppingCart className="opacity-10 mb-2 mx-auto" size={40} />
-                Nenhum item
-              </div>
-            ) : (
-              carrinho.map(item => (
-                <div key={item.id} className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <div className="flex justify-between font-bold text-sm uppercase tracking-tight">
-                    <span>{item.nome}</span>
-                    <span>R$ {item.preco.toFixed(2)}</span>
-                  </div>
-                  <div className="text-[10px] text-gray-500 uppercase font-bold mt-1">
-                    {item.tamanho} • Borda: {item.borda}
-                  </div>
-                  <button onClick={() => setCarrinho(carrinho.filter(i => i.id !== item.id))} className="text-[10px] text-red-500 mt-2 font-black uppercase underline">Remover</button>
+        </div>
+      ) : (
+        <div className="flex-1 bg-gray-900 p-6 overflow-y-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {pedidosCozinha.map(p => (
+              <div key={p.id_pedido} className={`rounded-[2rem] border-4 overflow-hidden ${p.status === 'Recebido' ? 'border-red-600' : 'border-yellow-500'}`}>
+                <div className={`p-4 font-black text-white flex justify-between ${p.status === 'Recebido' ? 'bg-red-600' : 'bg-yellow-500'}`}>
+                  <span>#{p.id_pedido}</span>
+                  <span className="text-[10px] uppercase opacity-70">{p.status}</span>
                 </div>
-              ))
-            )}
-          </div>
-
-          <div className="p-4 bg-gray-50 border-t space-y-3">
-            <div className="flex justify-between items-baseline">
-              <span className="text-xs font-bold text-gray-400 uppercase">Total</span>
-              <span className="text-3xl font-black">R$ {carrinho.reduce((a, b) => a + b.preco, 0).toFixed(2)}</span>
-            </div>
-            <button 
-              onClick={finalizarPedido}
-              disabled={carrinho.length === 0 || enviando} 
-              className="w-full bg-madre-green text-white py-4 rounded-xl font-black text-lg uppercase disabled:opacity-30 shadow-lg active:scale-95 transition-all"
-            >
-              {enviando ? "Enviando..." : "Finalizar Pedido"}
-            </button>
+                <div className="p-5 space-y-4">
+                  <div className="space-y-2">
+                    {p.itens.map((i, idx) => (
+                      <div key={idx} className="bg-white/5 p-2 rounded-xl border border-white/5">
+                        <p className="text-white font-black text-xs uppercase tracking-tight">{i.sabor}</p>
+                        <p className="text-[8px] text-white/30 font-bold uppercase">{i.tamanho} • {i.borda}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={() => mudarStatus(p.id_pedido, p.status)} className={`w-full py-3 rounded-xl font-black uppercase text-[10px] flex items-center justify-center gap-2 ${p.status === 'Recebido' ? 'bg-red-600 text-white' : 'bg-yellow-500 text-black'}`}>
+                    {p.status === 'Recebido' ? "Preparar" : "Finalizar"} <ArrowRight size={14}/>
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      )}
 
       {/* MODAL */}
       {saborSelecionado && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
-            <div className="bg-madre-red p-6 text-white relative">
-              <button onClick={() => setSaborSelecionado(null)} className="absolute top-4 right-4"><X /></button>
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[100]">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-md overflow-hidden">
+            <div className="bg-madre-red p-6 text-white flex justify-between">
               <h2 className="text-2xl font-black uppercase tracking-tighter">{saborSelecionado.nome_sabor}</h2>
-              <p className="text-xs opacity-80 mt-1">{saborSelecionado.ingredientes}</p>
+              <button onClick={() => setSaborSelecionado(null)}><X/></button>
             </div>
             <div className="p-6 space-y-6">
-              <div>
-                <label className="text-[10px] font-black uppercase text-gray-400 mb-2 block">Tamanho</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {tamanhos.map(t => (
-                    <button key={t.id_tamanho} onClick={() => setTamanhoEscolhido(t)} className={`py-2 text-[10px] font-black rounded-lg border-2 ${tamanhoEscolhido?.id_tamanho === t.id_tamanho ? 'border-madre-red bg-madre-red text-white' : 'border-gray-100 bg-gray-50'}`}>
-                      {t.nome_tamanho}
-                    </button>
-                  ))}
-                </div>
+              <div className="grid grid-cols-4 gap-2">
+                {tamanhos.map(t => (
+                  <button key={t.id_tamanho} onClick={() => setTamanhoEscolhido(t)} className={`py-2 text-[8px] font-black rounded-lg border-2 ${tamanhoEscolhido?.id_tamanho === t.id_tamanho ? 'border-madre-red bg-madre-red text-white' : 'border-gray-100 bg-gray-50'}`}>{t.nome_tamanho}</button>
+                ))}
               </div>
-              <div>
-                <label className="text-[10px] font-black uppercase text-gray-400 mb-2 block">Borda</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {bordas.map(b => (
-                    <button key={b.id_borda} onClick={() => setBordaEscolhida(b)} className={`p-3 text-[10px] font-black rounded-lg border-2 flex justify-between ${bordaEscolhida?.id_borda === b.id_borda ? 'border-madre-green bg-madre-green text-white' : 'border-gray-100 bg-gray-50'}`}>
-                      <span>{b.tipo}</span>
-                      <span className="opacity-60">{parseFloat(b.preco_adicional) > 0 ? `+${b.preco_adicional}` : ''}</span>
-                    </button>
-                  ))}
-                </div>
+              <div className="grid grid-cols-2 gap-2">
+                {bordas.map(b => (
+                  <button key={b.id_borda} onClick={() => setBordaEscolhida(b)} className={`p-3 text-[8px] font-black rounded-lg border-2 flex justify-between ${bordaEscolhida?.id_borda === b.id_borda ? 'border-madre-green bg-madre-green text-white' : 'border-gray-100 bg-gray-50'}`}>
+                    <span>{b.tipo}</span>
+                    <span className="opacity-50">+{b.preco_adicional}</span>
+                  </button>
+                ))}
               </div>
               <div className="flex justify-between items-center pt-4 border-t">
-                <span className="text-2xl font-black">R$ {calcularPrecoAtual().toFixed(2)}</span>
-                <button onClick={confirmarAdicao} className="bg-madre-green text-white px-8 py-3 rounded-xl font-black uppercase flex items-center gap-2"><Check size={20} /> Adicionar</button>
+                <span className="text-2xl font-black">R$ {calcularPreco().toFixed(2)}</span>
+                <button onClick={adicionarAoCarrinho} className="bg-madre-green text-white px-8 py-3 rounded-xl font-black text-sm">ADICIONAR</button>
               </div>
             </div>
           </div>

@@ -64,6 +64,9 @@ class Pedido(Base):
     valor_total = Column(Numeric(10, 2), default=0.00)
     data_hora_criacao = Column(DateTime(timezone=True), server_default=func.now())
 
+    # Relacionamento para buscar itens
+    itens = relationship("ItemPedido", back_populates="pedido")
+
 class HistoricoStatusPedido(Base):
     __tablename__ = "historico_status_pedido"
     id_historico = Column(Integer, primary_key=True, index=True)
@@ -79,14 +82,25 @@ class ItemPedido(Base):
     quantidade = Column(Integer, default=1)
     preco_unitario_vendido = Column(Numeric(10, 2), nullable=False)
 
+    pedido = relationship("Pedido", back_populates="itens")
+    detalhe_pizza = relationship("ItemPizzaDetalhe", uselist=False, back_populates="item")
+
 class ItemPizzaDetalhe(Base):
     __tablename__ = "item_pizza_detalhe"
     id_item = Column(Integer, ForeignKey("itens_pedido.id_item"), primary_key=True)
     id_tamanho = Column(Integer, ForeignKey("tamanhos.id_tamanho"))
     id_borda = Column(Integer, ForeignKey("bordas.id_borda"), nullable=True)
 
+    item = relationship("ItemPedido", back_populates="detalhe_pizza")
+    tamanho = relationship("Tamanho")
+    borda = relationship("Borda")
+    sabores = relationship("PizzaSabor", back_populates="detalhe")
+
 class PizzaSabor(Base):
     __tablename__ = "pizza_sabores"
     id_item = Column(Integer, ForeignKey("item_pizza_detalhe.id_item"), primary_key=True)
     id_sabor = Column(Integer, ForeignKey("sabores.id_sabor"), primary_key=True)
     fracao = Column(Numeric(3, 2), default=1.00)
+
+    detalhe = relationship("ItemPizzaDetalhe", back_populates="sabores")
+    sabor = relationship("Sabor")
