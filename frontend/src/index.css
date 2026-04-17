@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+  --color-madre-red: #cc3333;
+  --color-madre-green: #2e7d32;
+  --color-madre-yellow: #fbc02d;
+}
+
+/* Reset básico para garantir que o layout ocupe a tela toda */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #f3f4f6;
+}

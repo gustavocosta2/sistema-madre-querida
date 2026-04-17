@@ -1,0 +1,92 @@
+from sqlalchemy import Column, Integer, String, Boolean, Numeric, ForeignKey, Table, Text, DateTime, func
+from sqlalchemy.orm import relationship
+from database import Base
+
+# --- MÓDULO DE PESSOAS ---
+class Pessoa(Base):
+    __tablename__ = "pessoas"
+    cpf = Column(String(14), primary_key=True)
+    nome = Column(String(100), nullable=False)
+    criado_em = Column(DateTime(timezone=True), server_default=func.now())
+
+class Cliente(Base):
+    __tablename__ = "clientes"
+    cpf_cliente = Column(String(14), ForeignKey("pessoas.cpf"), primary_key=True)
+    saldo_pontos = Column(Integer, default=0)
+
+# --- MÓDULO DE PRODUTOS ---
+class Produto(Base):
+    __tablename__ = "produtos"
+    id_produto = Column(Integer, primary_key=True, index=True)
+    nome = Column(String(100), nullable=False)
+    disponivel = Column(Boolean, default=True)
+    descricao = Column(Text)
+    tipo_produto = Column(String(20), nullable=False)
+
+class Bebida(Base):
+    __tablename__ = "bebidas"
+    id_bebida = Column(Integer, ForeignKey("produtos.id_produto"), primary_key=True)
+    volume_ml = Column(Integer, nullable=False)
+    preco_venda = Column(Numeric(10, 2), nullable=False)
+
+class Tamanho(Base):
+    __tablename__ = "tamanhos"
+    id_tamanho = Column(Integer, primary_key=True, index=True)
+    nome_tamanho = Column(String(30), unique=True, nullable=False)
+    qtd_sabor_max = Column(Integer, nullable=False)
+
+class Sabor(Base):
+    __tablename__ = "sabores"
+    id_sabor = Column(Integer, primary_key=True, index=True)
+    nome_sabor = Column(String(50), nullable=False)
+    ingredientes = Column(Text)
+    disponivel = Column(Boolean, default=True)
+
+class Precificado(Base):
+    __tablename__ = "precificado"
+    id_sabor = Column(Integer, ForeignKey("sabores.id_sabor"), primary_key=True)
+    id_tamanho = Column(Integer, ForeignKey("tamanhos.id_tamanho"), primary_key=True)
+    preco_base = Column(Numeric(10, 2), nullable=False)
+
+class Borda(Base):
+    __tablename__ = "bordas"
+    id_borda = Column(Integer, primary_key=True, index=True)
+    tipo = Column(String(50), unique=True, nullable=False)
+    preco_adicional = Column(Numeric(10, 2), default=0.00)
+
+# --- MÓDULO DE PEDIDOS ---
+class Pedido(Base):
+    __tablename__ = "pedidos"
+    id_pedido = Column(Integer, primary_key=True, index=True)
+    id_cliente = Column(String(14), ForeignKey("clientes.cpf_cliente"), nullable=True)
+    status = Column(String(30), default="Recebido")
+    origem = Column(String(30), default="Balcão")
+    valor_total = Column(Numeric(10, 2), default=0.00)
+    data_hora_criacao = Column(DateTime(timezone=True), server_default=func.now())
+
+class HistoricoStatusPedido(Base):
+    __tablename__ = "historico_status_pedido"
+    id_historico = Column(Integer, primary_key=True, index=True)
+    id_pedido = Column(Integer, ForeignKey("pedidos.id_pedido"))
+    status = Column(String(30), nullable=False)
+    data_hora = Column(DateTime(timezone=True), server_default=func.now())
+
+class ItemPedido(Base):
+    __tablename__ = "itens_pedido"
+    id_item = Column(Integer, primary_key=True, index=True)
+    id_pedido = Column(Integer, ForeignKey("pedidos.id_pedido"))
+    id_produto = Column(Integer, ForeignKey("produtos.id_produto"))
+    quantidade = Column(Integer, default=1)
+    preco_unitario_vendido = Column(Numeric(10, 2), nullable=False)
+
+class ItemPizzaDetalhe(Base):
+    __tablename__ = "item_pizza_detalhe"
+    id_item = Column(Integer, ForeignKey("itens_pedido.id_item"), primary_key=True)
+    id_tamanho = Column(Integer, ForeignKey("tamanhos.id_tamanho"))
+    id_borda = Column(Integer, ForeignKey("bordas.id_borda"), nullable=True)
+
+class PizzaSabor(Base):
+    __tablename__ = "pizza_sabores"
+    id_item = Column(Integer, ForeignKey("item_pizza_detalhe.id_item"), primary_key=True)
+    id_sabor = Column(Integer, ForeignKey("sabores.id_sabor"), primary_key=True)
+    fracao = Column(Numeric(3, 2), default=1.00)
