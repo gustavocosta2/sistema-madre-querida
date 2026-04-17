@@ -9,6 +9,21 @@ class Pessoa(Base):
     nome = Column(String(100), nullable=False)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
 
+class Funcionario(Base):
+    __tablename__ = "funcionarios"
+    cpf_funcionario = Column(String(14), ForeignKey("pessoas.cpf"), primary_key=True)
+    cargo = Column(String(50))
+    salario = Column(Numeric(10,2))
+    ativo = Column(Boolean, default=True)
+
+class Motoboy(Base):
+    __tablename__ = "motoboys"
+    cpf_motoboy = Column(String(14), ForeignKey("funcionarios.cpf_funcionario"), primary_key=True)
+    placa_veiculo = Column(String(10), nullable=False)
+    tipo_vinculo = Column(String(20))
+
+    funcionario = relationship("Funcionario")
+
 class Cliente(Base):
     __tablename__ = "clientes"
     cpf_cliente = Column(String(14), ForeignKey("pessoas.cpf"), primary_key=True)
@@ -59,12 +74,12 @@ class Pedido(Base):
     __tablename__ = "pedidos"
     id_pedido = Column(Integer, primary_key=True, index=True)
     id_cliente = Column(String(14), ForeignKey("clientes.cpf_cliente"), nullable=True)
+    id_motoboy = Column(String(14), ForeignKey("motoboys.cpf_motoboy"), nullable=True)
     status = Column(String(30), default="Recebido")
     origem = Column(String(30), default="Balcão")
     valor_total = Column(Numeric(10, 2), default=0.00)
     data_hora_criacao = Column(DateTime(timezone=True), server_default=func.now())
 
-    # Relacionamento para buscar itens
     itens = relationship("ItemPedido", back_populates="pedido")
 
 class HistoricoStatusPedido(Base):

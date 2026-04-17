@@ -51,6 +51,21 @@ def listar_precos(db: Session = Depends(database.get_db)):
     print("DEBUG: Recebi requisição em /precos")
     return db.query(models.Precificado).all()
 
+# --- NOVA ROTA: LISTAR MOTOBOYS ---
+@app.get("/motoboys")
+def listar_motoboys(db: Session = Depends(database.get_db)):
+    motoboys = db.query(models.Motoboy).all()
+    resultado = []
+    for m in motoboys:
+        pessoa = db.query(models.Pessoa).filter(models.Pessoa.cpf == m.cpf_motoboy).first()
+        resultado.append({
+            "cpf": m.cpf_motoboy,
+            "nome": pessoa.nome if pessoa else "Desconhecido",
+            "placa": m.placa_veiculo,
+            "vinculo": m.tipo_vinculo  # Agora enviamos se é Próprio ou Freelancer
+        })
+    return resultado
+
 # --- NOVA ROTA: FINALIZAR PEDIDO ---
 @app.post("/pedidos")
 def criar_pedido(pedido_in: schemas.PedidoCreate, db: Session = Depends(database.get_db)):
@@ -170,6 +185,25 @@ def atualizar_status(id_pedido: int, novo_status: str, db: Session = Depends(dat
     db.add(historico)
     db.commit()
     return {"status": "Atualizado", "novo_status": novo_status}
+
+# --- NOVA ROTA: DESPACHAR PEDIDO ---
+@app.patch("/pedidos/{id_pedido}/despachar")
+def despachar_pedido(id_pedido: int, cpf_motoboy: str, db: Session = Depends(database.get_db)):
+    pedido = db.query(models.Pedido).filter(models.Pedido.id_pedido == id_pedido).first()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    
+    pedido.status = "Em Rota"
+    pedido.id_motoboy = cpf_motoboy
+    
+    # Registra no histórico
+    historico = models.HistoricoStatusPedido(
+        id_pedido=id_pedido,
+        status="Em Rota"
+    )
+    db.add(historico)
+    db.commit()
+    return {"status": "Em Rota", "motoboy": cpf_motoboy}
 
 if __name__ == "__main__":
     import uvicorn
