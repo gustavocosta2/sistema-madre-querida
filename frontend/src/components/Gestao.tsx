@@ -1,56 +1,142 @@
-import { Settings, Plus, EyeOff, Eye } from 'lucide-react';
-import type { Sabor } from '../types';
+import { Settings, Plus, Award, Pencil } from 'lucide-react';
 import { api } from '../api';
+import { useState } from 'react';
+import { useMadre } from '../context/MadreContext';
+import { EditProdutoModal } from './modals/EditProdutoModal';
 
 interface GestaoProps {
-  sabores: Sabor[];
-  refresh: () => void;
   onOpenNovoSabor: () => void;
+  onOpenNovaBebida: () => void;
 }
 
-export function Gestao({ sabores, refresh, onOpenNovoSabor }: GestaoProps) {
-  const alternarSabor = (id: number, atual: boolean) => {
-    api.patchSaborDisponibilidade(id, !atual).then(refresh);
+export function Gestao({ onOpenNovoSabor, onOpenNovaBebida }: GestaoProps) {
+  const { sabores, bebidas, refreshAll } = useMadre();
+  const [editando, setEditando] = useState<{ item: any, tipo: 'pizza' | 'bebida' } | null>(null);
+
+  const handleSalvarEdicao = (novosDados: any) => {
+    if (!editando) return;
+    const promise = editando.tipo === 'pizza'
+      ? api.patchSabor(editando.item.id_sabor, {
+          nome_sabor: novosDados.nome,
+          ingredientes: novosDados.ingredientes,
+          preco_pontos: novosDados.preco_pontos,
+          precos_por_tamanho: novosDados.precos_por_tamanho
+        })
+      : api.patchBebida(editando.item.id_produto, {
+          nome: novosDados.nome,
+          preco: novosDados.preco,
+          preco_pontos: novosDados.preco_pontos
+        });
+
+    promise.then(() => {
+      refreshAll();
+      setEditando(null);
+    }).catch((err) => {
+      console.error(err);
+      alert("Erro ao salvar alterações. Verifique o console.");
+    });
+  };
+
+  const handleExcluir = () => {
+    if (!editando || editando.tipo !== 'pizza') return;
+    api.deleteSabor(editando.item.id_sabor).then(() => {
+      refreshAll();
+      setEditando(null);
+    });
   };
 
   return (
     <div className="flex-1 p-10 overflow-y-auto">
+      {editando && (
+        <EditProdutoModal 
+          item={editando.item} 
+          tipo={editando.tipo} 
+          onClose={() => setEditando(null)} 
+          onConfirm={handleSalvarEdicao}
+          onDelete={editando.tipo === 'pizza' ? handleExcluir : undefined}
+        />
+      )}
+      
       <div className="max-w-5xl mx-auto space-y-10">
         <div className="flex justify-between items-center border-b-4 border-black/5 pb-6">
-          <h2 className="text-4xl font-black uppercase tracking-tighter italic">
-            <Settings size={40} className="inline mr-4 text-[#b91c1c]" /> Gestão Administrativa
+          <h2 className="text-4xl font-black uppercase tracking-tighter italic text-gray-900">
+            <Settings size={40} className="inline mr-4 text-[#b91c1c]" /> Painel de Gestão
           </h2>
-          <button onClick={onOpenNovoSabor} className="bg-black text-white px-8 py-4 rounded-2xl font-black text-xs uppercase flex items-center gap-2 shadow-xl hover:bg-gray-800">
-            <Plus /> Nova Pizza
-          </button>
+          <div className="flex gap-4">
+            <button onClick={onOpenNovaBebida} className="bg-white border-4 border-gray-100 text-gray-900 px-8 py-4 rounded-2xl font-black text-xs uppercase flex items-center gap-2 shadow-xl hover:bg-gray-50 transition-all active:scale-95">
+                <Plus /> Nova Bebida
+            </button>
+            <button onClick={onOpenNovoSabor} className="bg-black text-white px-8 py-4 rounded-2xl font-black text-xs uppercase flex items-center gap-2 shadow-xl hover:bg-gray-800 transition-all active:scale-95">
+                <Plus /> Nova Pizza
+            </button>
+          </div>
         </div>
-        <div className="bg-white rounded-[3rem] shadow-2xl border-2 border-gray-100 overflow-hidden">
-          <table className="w-full text-left">
-            <thead className="bg-gray-100 border-b-2 border-gray-200 text-[10px] font-black uppercase text-gray-900">
-              <tr>
-                <th className="p-6">Sabor da Pizza</th>
-                <th className="p-6">Status</th>
-                <th className="p-6 text-center">Ação</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y-2 divide-gray-100">
-              {sabores.map(s => (
-                <tr key={s.id_sabor} className={s.disponivel ? 'bg-white' : 'bg-gray-50 opacity-50'}>
-                  <td className="p-6 font-black uppercase text-sm">{s.nome_sabor}</td>
-                  <td className="p-6">
-                    <span className={`px-4 py-1 rounded-full text-[9px] font-black uppercase ${s.disponivel ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                      {s.disponivel ? 'VENDENDO' : 'OCULTO'}
-                    </span>
-                  </td>
-                  <td className="p-6 text-center">
-                    <button onClick={() => alternarSabor(s.id_sabor, !!s.disponivel)} className="p-3 bg-gray-200 rounded-xl hover:bg-black hover:text-white transition-all">
-                      {s.disponivel ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </td>
+
+        {/* TABELA DE PIZZAS */}
+        <div className="space-y-4">
+          <h3 className="text-xl font-black uppercase italic text-gray-400 flex items-center gap-2 px-6">
+            <Award size={20}/> Cardápio de Pizzas
+          </h3>
+          <div className="bg-white rounded-[3rem] shadow-2xl border-2 border-gray-100 overflow-hidden">
+            <table className="w-full text-left">
+              <thead className="bg-gray-100 border-b-2 border-gray-200 text-[10px] font-black uppercase text-gray-900">
+                <tr>
+                  <th className="p-6">Sabor</th>
+                  <th className="p-6">Resgate</th>
+                  <th className="p-6 text-center">Ações</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y-2 divide-gray-100">
+                {sabores.map(s => (
+                  <tr key={s.id_sabor} className="bg-white">
+                    <td className="p-6">
+                      <p className="font-black uppercase text-sm">{s.nome_sabor}</p>
+                      <p className="text-[9px] font-bold text-gray-400 uppercase line-clamp-1">{s.ingredientes}</p>
+                    </td>
+                    <td className="p-6 font-black text-xs text-amber-600">{s.preco_pontos || 0} Pts</td>
+                    <td className="p-6 text-center">
+                      <button onClick={() => setEditando({ item: s, tipo: 'pizza' })} className="p-3 bg-gray-100 text-gray-600 rounded-xl hover:bg-black hover:text-white transition-all">
+                        <Pencil size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* TABELA DE BEBIDAS */}
+        <div className="space-y-4 pt-10">
+          <h3 className="text-xl font-black uppercase italic text-gray-400 flex items-center gap-2 px-6">
+            <Award size={20}/> Tabela de Bebidas
+          </h3>
+          <div className="bg-white rounded-[3rem] shadow-2xl border-2 border-gray-100 overflow-hidden">
+            <table className="w-full text-left">
+              <thead className="bg-gray-100 border-b-2 border-gray-200 text-[10px] font-black uppercase text-gray-900">
+                <tr>
+                  <th className="p-6">Bebida</th>
+                  <th className="p-6">Preço (R$)</th>
+                  <th className="p-6">Resgate</th>
+                  <th className="p-6 text-center">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y-2 divide-gray-100">
+                {bebidas.map(b => (
+                  <tr key={b.id_produto} className="bg-white">
+                    <td className="p-6 font-black uppercase text-sm">{b.nome}</td>
+                    <td className="p-6 font-black text-sm text-green-700">R$ {parseFloat(b.preco).toFixed(2)}</td>
+                    <td className="p-6 font-black text-xs text-amber-600">{b.preco_pontos || 0} Pts</td>
+                    <td className="p-6 text-center">
+                      <button onClick={() => setEditando({ item: b, tipo: 'bebida' })} className="p-3 bg-gray-100 text-gray-600 rounded-xl hover:bg-black hover:text-white transition-all">
+                        <Pencil size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

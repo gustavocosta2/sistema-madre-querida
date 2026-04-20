@@ -22,13 +22,13 @@ export interface Preco {
     id_tamanho: number; 
     preco_base: string; 
 }
-
 export interface Bebida { 
     id_produto: number; 
     nome: string; 
     volume: number; 
     preco: string; 
     disponivel?: boolean; 
+    preco_pontos?: number; 
 }
 
 export interface ItemCarrinho { 
@@ -37,7 +37,11 @@ export interface ItemCarrinho {
     tipo: 'pizza' | 'bebida'; 
     nome: string; 
     preco: number; 
+    pago_com_pontos?: boolean;
+    custo_pontos?: number;
     sabores?: number[]; 
+...
+
     id_tamanho?: number; 
     id_borda?: number; 
     detalhe?: string; 

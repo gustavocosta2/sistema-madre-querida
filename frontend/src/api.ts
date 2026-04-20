@@ -5,9 +5,11 @@ const baseUrl = 'http://localhost:8000';
 export const api = {
   // --- SABORES ---
   getSabores: () => axios.get(`${baseUrl}/sabores`),
-  patchSaborDisponibilidade: (id: number, disponivel: boolean) => 
-    axios.patch(`${baseUrl}/sabores/${id}/disponibilidade?disponivel=${disponivel}`),
-  postSabor: (sabor: { nome_sabor: string; ingredientes: string }) => 
+  patchSabor: (id: number, sabor: any) => 
+    axios.patch(`${baseUrl}/sabores/${id}`, sabor),
+  deleteSabor: (id: number) => 
+    axios.delete(`${baseUrl}/sabores/${id}`),
+  postSabor: (sabor: any) => 
     axios.post(`${baseUrl}/sabores`, sabor),
 
   // --- PEDIDOS ---
@@ -31,5 +33,9 @@ export const api = {
   getPrecos: () => axios.get(`${baseUrl}/precos`),
   getMotoboys: () => axios.get(`${baseUrl}/motoboys`),
   getBebidas: () => axios.get(`${baseUrl}/bebidas`),
+  postBebida: (bebida: any) => 
+    axios.post(`${baseUrl}/bebidas`, bebida),
+  patchBebida: (id: number, bebida: any) => 
+    axios.patch(`${baseUrl}/bebidas/${id}`, bebida),
   login: (credentials: any) => axios.post(`${baseUrl}/login`, credentials),
 };

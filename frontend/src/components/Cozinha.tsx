@@ -1,18 +1,14 @@
 import { ChefHat, Clock } from 'lucide-react';
-import type { PedidoAtivo } from '../types';
+import { useMadre } from '../context/MadreContext';
 import { api } from '../api';
 
-interface CozinhaProps {
-  pedidos: PedidoAtivo[];
-  refresh: () => void;
-}
-
-export function Cozinha({ pedidos, refresh }: CozinhaProps) {
-  const pedidosCozinha = pedidos.filter(p => ['Recebido', 'Em Preparo'].includes(p.status));
+export function Cozinha() {
+  const { pedidosAtivos, refreshOrders } = useMadre();
+  const pedidosCozinha = pedidosAtivos.filter(p => ['Recebido', 'Em Preparo'].includes(p.status));
 
   const atualizarStatus = (id: number, atual: string) => {
     const proximo = atual === 'Recebido' ? 'Em Preparo' : 'Aguardando Entrega';
-    api.patchStatusPedido(id, proximo).then(refresh);
+    api.patchStatusPedido(id, proximo).then(refreshOrders);
   };
 
   return (

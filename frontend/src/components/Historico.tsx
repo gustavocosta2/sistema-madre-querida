@@ -1,10 +1,9 @@
 import { Clock, CheckCircle, XCircle, Info } from 'lucide-react';
+import { useMadre } from '../context/MadreContext';
 
-interface HistoricoProps {
-  pedidos: any[];
-}
-
-export function Historico({ pedidos }: HistoricoProps) {
+export function Historico() {
+  const { historicoPedidos } = useMadre();
+  
   return (
     <div className="flex-1 p-10 overflow-y-auto">
       <div className="max-w-5xl mx-auto space-y-10">
@@ -19,18 +18,18 @@ export function Historico({ pedidos }: HistoricoProps) {
           </div>
           <div className="text-right">
             <p className="text-[10px] font-black text-gray-400 uppercase">Total Vendido (Hoje)</p>
-            <p className="text-2xl font-black text-green-700 italic">R$ {pedidos.filter(p => p.status === 'Finalizado').reduce((acc, p) => acc + p.valor_total, 0).toFixed(2)}</p>
+            <p className="text-2xl font-black text-green-700 italic">R$ {historicoPedidos.filter(p => p.status === 'Finalizado').reduce((acc, p) => acc + p.valor_total, 0).toFixed(2)}</p>
           </div>
         </div>
 
         <div className="space-y-4">
-          {pedidos.length === 0 ? (
+          {historicoPedidos.length === 0 ? (
             <div className="py-20 text-center opacity-20">
               <Clock size={80} className="mx-auto mb-4" />
               <p className="font-black uppercase italic">Nenhum pedido finalizado ainda.</p>
             </div>
           ) : (
-            pedidos.map(p => (
+            historicoPedidos.map(p => (
               <div key={p.id_pedido} className="bg-white rounded-[2.5rem] border-2 border-gray-100 p-8 flex justify-between items-center shadow-sm hover:shadow-md transition-all">
                 <div className="flex items-center gap-6">
                   <div className={`p-4 rounded-full ${p.status === 'Finalizado' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>

@@ -1,13 +1,14 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict
 from decimal import Decimal
 
-# --- LEITURA ---
+# --- SCHEMAS DE LEITURA (SAÍDA) ---
 class Sabor(BaseModel):
     id_sabor: int
     nome_sabor: str
     ingredientes: Optional[str]
     disponivel: bool = True
+    preco_pontos: Optional[int] = 0
     class Config: from_attributes = True
 
 class Tamanho(BaseModel):
@@ -28,15 +29,28 @@ class Precificado(BaseModel):
     preco_base: Decimal
     class Config: from_attributes = True
 
-# --- SEGURANÇA / CRM ---
-class EnderecoCreate(BaseModel):
-    cpf_pessoa: str
-    logradouro: str
-    numero: str
-    complemento: Optional[str] = None
-    bairro: str
-    cep: str
-    ponto_referencia: Optional[str] = None
+class Bebida(BaseModel):
+    id_produto: int
+    nome: str
+    volume: int
+    preco: Decimal
+    disponivel: Optional[bool] = True
+    preco_pontos: Optional[int] = 0
+    class Config: from_attributes = True
+
+# --- SCHEMAS DE ESCRITA (ENTRADA / UPDATE) ---
+
+class SaborUpdate(BaseModel):
+    nome_sabor: Optional[str] = None
+    ingredientes: Optional[str] = None
+    preco_pontos: Optional[int] = None
+    precos_por_tamanho: Optional[Dict[int, float]] = None # Mapeia ID_TAMANHO -> PRECO
+
+class BebidaUpdate(BaseModel):
+    nome: Optional[str] = None
+    preco: Optional[float] = None
+    volume: Optional[int] = None
+    preco_pontos: Optional[int] = None
 
 class ClienteCompletoCreate(BaseModel):
     cpf: str
@@ -48,6 +62,31 @@ class ClienteCompletoCreate(BaseModel):
     cep: str
     ponto_referencia: Optional[str] = None
 
+class EnderecoCreate(BaseModel):
+    cpf_pessoa: str
+    logradouro: str
+    numero: str
+    complemento: Optional[str] = None
+    bairro: str
+    cep: str
+    ponto_referencia: Optional[str] = None
+
+# --- PEDIDOS ---
+class ItemPedidoCreate(BaseModel):
+    tipo: str # 'pizza' ou 'bebida'
+    id_produto: Optional[int] = None
+    sabores: Optional[List[int]] = []
+    id_tamanho: Optional[int] = None
+    id_borda: Optional[int] = None
+    preco: Decimal
+
+class PedidoCreate(BaseModel):
+    cpf_cliente: Optional[str] = None
+    id_endereco_entrega: Optional[int] = None
+    itens: List[ItemPedidoCreate]
+    pontos_resgatados: Optional[int] = 0
+
+# --- SEGURANÇA ---
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -57,17 +96,3 @@ class TokenResponse(BaseModel):
     token_type: str
     role: str
     username: str
-
-# --- CRIAÇÃO DE PEDIDO (REFATORADO) ---
-class ItemPedidoCreate(BaseModel):
-    tipo: str  # "pizza" ou "bebida"
-    id_produto: Optional[int] = None  # Usado para bebidas
-    sabores: Optional[List[int]] = []  # Lista de IDs de sabores para pizzas
-    id_tamanho: Optional[int] = None
-    id_borda: Optional[int] = None
-    preco: Decimal
-
-class PedidoCreate(BaseModel):
-    cpf_cliente: Optional[str] = None
-    id_endereco_entrega: Optional[int] = None
-    itens: List[ItemPedidoCreate]

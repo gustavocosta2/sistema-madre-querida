@@ -1,87 +1,97 @@
 -- -----------------------------------------------------
 -- Esquema Físico: Pizzaria Madre Querida (PostgreSQL)
--- Versão: 2.2
+-- Versão: 2.3
 -- -----------------------------------------------------
 
 -- 0. LIMPEZA (FACILITA O RE-RUN DURANTE O DESENVOLVIMENTO)
+DROP TABLE IF EXISTS pizza_sabores CASCADE;
+DROP TABLE IF EXISTS item_pizza_detalhe CASCADE;
+DROP TABLE IF EXISTS itens_pedido CASCADE;
+DROP TABLE IF EXISTS pagamentos CASCADE;
+DROP TABLE IF EXISTS historico_status_pedido CASCADE;
+DROP TABLE IF EXISTS pedidos CASCADE;
+DROP TABLE IF EXISTS precificado CASCADE;
+DROP TABLE IF EXISTS sabores CASCADE;
+DROP TABLE IF EXISTS bordas CASCADE;
+DROP TABLE IF EXISTS tamanhos CASCADE;
+DROP TABLE IF EXISTS bebidas CASCADE;
+DROP TABLE IF EXISTS produtos CASCADE;
+DROP TABLE IF EXISTS motoboys CASCADE;
+DROP TABLE IF EXISTS funcionarios CASCADE;
+DROP TABLE IF EXISTS clientes CASCADE;
+DROP TABLE IF EXISTS enderecos_pessoa CASCADE;
 DROP TABLE IF EXISTS usuarios CASCADE;
-DROP TABLE IF EXISTS promocao_produtos, promocao_sabores, promocao_tamanhos, promocoes CASCADE;
-DROP TABLE IF EXISTS pizza_sabores, item_pizza_detalhe, itens_pedido, pagamentos, historico_status_pedido, pedidos CASCADE;
-DROP TABLE IF EXISTS precificado, sabores, bordas, tamanhos, bebidas, produtos CASCADE;
-DROP TABLE IF EXISTS motoboys, funcionarios, clientes, enderecos_pessoa, telefones_pessoa, pessoas CASCADE;
-DROP TYPE IF EXISTS status_pedido_enum, origem_pedido_enum, tipo_vinculo_enum CASCADE;
+DROP TABLE IF EXISTS pessoas CASCADE;
+DROP TYPE IF EXISTS status_pedido_enum CASCADE;
+DROP TYPE IF EXISTS origem_pedido_enum CASCADE;
 
--- 1. TIPOS CUSTOMIZADOS (ENGENHARIA DE ESTADOS)
-CREATE TYPE status_pedido_enum AS ENUM ('Recebido', 'Em Preparo', 'Aguardando Entrega', 'Em Rota', 'Finalizado', 'Cancelado');
-CREATE TYPE origem_pedido_enum AS ENUM ('WhatsApp', 'Telefone', 'Balcão', 'iFood');
-CREATE TYPE tipo_vinculo_enum AS ENUM ('Próprio', 'Freelancer');
+-- 1. ENUMS (GARANTEM INTEGRIDADE NOS ESTADOS)
+CREATE TYPE status_pedido_enum AS ENUM (
+    'Recebido', 'Em Preparo', 'Aguardando Entrega', 'Em Rota', 'Finalizado', 'Cancelado'
+);
 
--- Tabela de Usuários (Login e Acesso)
+CREATE TYPE origem_pedido_enum AS ENUM (
+    'WhatsApp', 'Telefone', 'Balcão', 'iFood'
+);
+
+-- 2. MÓDULO DE SEGURANÇA E ACESSO
+CREATE TABLE pessoas (
+    cpf VARCHAR(14) PRIMARY KEY, -- Formato: 000.000.000-00
+    nome VARCHAR(100) NOT NULL,
+    criado_em TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE usuarios (
     id_usuario SERIAL PRIMARY KEY,
-    username VARCHAR(50) UNIQUE NOT NULL,
+    username VARCHAR(50) NOT NULL UNIQUE,
     senha_hash VARCHAR(255) NOT NULL,
-    role VARCHAR(20) DEFAULT 'funcionario',
-    ativo BOOLEAN DEFAULT TRUE
+    role VARCHAR(20) DEFAULT 'funcionario', -- 'admin', 'funcionario'
+    ativo BOOLEAN DEFAULT TRUE,
+    ultima_login TIMESTAMPTZ
 );
 
--- 2. MÓDULO DE PESSOAS E ATORES (HERANÇA E ENDEREÇAMENTO)
-CREATE TABLE pessoas (
-    cpf VARCHAR(14) PRIMARY KEY,
-    nome VARCHAR(100) NOT NULL,
-    criado_em TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT cpf_format CHECK (cpf ~ '^\d{3}\.\d{3}\.\d{3}-\d{2}$' OR cpf ~ '^\d{11}$')
-);
-
-CREATE TABLE telefones_pessoa (
-    id_telefone SERIAL PRIMARY KEY,
-    cpf_pessoa VARCHAR(14) NOT NULL REFERENCES pessoas(cpf) ON DELETE CASCADE,
-    numero VARCHAR(20) NOT NULL,
-    tipo VARCHAR(20) -- Celular, Fixo, Trabalho
-);
-
--- SUPORTE A MÚLTIPLOS ENDEREÇOS (Solução Sênior)
 CREATE TABLE enderecos_pessoa (
     id_endereco SERIAL PRIMARY KEY,
     cpf_pessoa VARCHAR(14) NOT NULL REFERENCES pessoas(cpf) ON DELETE CASCADE,
     logradouro VARCHAR(100) NOT NULL,
     numero VARCHAR(10),
-    complemento VARCHAR(50), -- NOVO CAMPO
-    bairro VARCHAR(50) NOT NULL,
+    complemento VARCHAR(50),
+    bairro VARCHAR(50),
     cidade VARCHAR(50) DEFAULT 'São João del Rei',
-    uf CHAR(2) DEFAULT 'MG',
-    cep VARCHAR(9) NOT NULL,
+    cep VARCHAR(9),
     ponto_referencia TEXT,
     e_principal BOOLEAN DEFAULT FALSE
 );
 
+-- 3. MÓDULO DE CRM E RH
 CREATE TABLE clientes (
     cpf_cliente VARCHAR(14) PRIMARY KEY REFERENCES pessoas(cpf) ON DELETE CASCADE,
-    saldo_pontos INT DEFAULT 0 CHECK (saldo_pontos >= 0),
+    saldo_pontos INTEGER DEFAULT 0,
     ultima_visita TIMESTAMPTZ
 );
 
 CREATE TABLE funcionarios (
     cpf_funcionario VARCHAR(14) PRIMARY KEY REFERENCES pessoas(cpf) ON DELETE CASCADE,
-    cargo VARCHAR(50) NOT NULL,
-    salario NUMERIC(10,2) CHECK (salario > 0),
+    cargo VARCHAR(50),
+    salario NUMERIC(10,2),
     data_admissao DATE DEFAULT CURRENT_DATE,
     ativo BOOLEAN DEFAULT TRUE
 );
 
 CREATE TABLE motoboys (
     cpf_motoboy VARCHAR(14) PRIMARY KEY REFERENCES funcionarios(cpf_funcionario) ON DELETE CASCADE,
-    placa_veiculo VARCHAR(10) NOT NULL UNIQUE,
-    tipo_vinculo tipo_vinculo_enum DEFAULT 'Freelancer'
+    placa_veiculo VARCHAR(10) NOT NULL,
+    tipo_vinculo VARCHAR(20) DEFAULT 'Freelancer' -- 'Próprio', 'Freelancer'
 );
 
--- 3. MÓDULO DE PRODUTOS (CATÁLOGO DINÂMICO)
+-- 3. MÓDULO DE PRODUTOS E CARDÁPIO
 CREATE TABLE produtos (
     id_produto SERIAL PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
     disponivel BOOLEAN DEFAULT TRUE,
     descricao TEXT,
-    tipo_produto VARCHAR(20) NOT NULL -- 'Bebida', 'Pizza', 'Adicional'
+    tipo_produto VARCHAR(20) NOT NULL, -- 'Bebida', 'Pizza', 'Adicional'
+    preco_pontos INTEGER DEFAULT 0     -- Custo para resgate via pontos
 );
 
 CREATE TABLE bebidas (
@@ -106,7 +116,8 @@ CREATE TABLE sabores (
     id_sabor SERIAL PRIMARY KEY,
     nome_sabor VARCHAR(50) NOT NULL,
     ingredientes TEXT,
-    disponivel BOOLEAN DEFAULT TRUE
+    disponivel BOOLEAN DEFAULT TRUE,
+    preco_pontos INTEGER DEFAULT 0     -- Custo para resgate via pontos
 );
 
 -- MATRIZ DE PRECIFICAÇÃO (Crucial para o negócio)
@@ -148,40 +159,30 @@ CREATE TABLE pagamentos (
     valor_pago NUMERIC(10,2) NOT NULL CHECK (valor_pago > 0)
 );
 
--- REGISTRO DE ITENS COM PREÇO HISTÓRICO (Auditável)
+-- ITENS DO PEDIDO (Fração para Meio a Meio)
 CREATE TABLE itens_pedido (
     id_item SERIAL PRIMARY KEY,
     id_pedido INT NOT NULL REFERENCES pedidos(id_pedido) ON DELETE CASCADE,
     id_produto INT NOT NULL REFERENCES produtos(id_produto),
-    quantidade INT NOT NULL CHECK (quantidade > 0),
-    preco_unitario_vendido NUMERIC(10,2) NOT NULL CHECK (preco_unitario_vendido >= 0),
-    observacao TEXT,
-    subtotal_item NUMERIC(10,2) GENERATED ALWAYS AS (quantidade * preco_unitario_vendido) STORED
+    quantidade INTEGER NOT NULL DEFAULT 1 CHECK (quantidade > 0),
+    preco_unitario_vendido NUMERIC(10,2) NOT NULL -- Congela o preço no ato da venda
 );
 
--- DETALHAMENTO DE PIZZAS CUSTOMIZADAS
+-- Detalhes exclusivos para itens do tipo 'Pizza'
 CREATE TABLE item_pizza_detalhe (
     id_item INT PRIMARY KEY REFERENCES itens_pedido(id_item) ON DELETE CASCADE,
     id_tamanho INT NOT NULL REFERENCES tamanhos(id_tamanho),
     id_borda INT REFERENCES bordas(id_borda)
 );
 
--- SABORES DA PIZZA (Permite frações: 1/2, 1/3, etc)
+-- Junção de sabores para cada item pizza (N:N)
 CREATE TABLE pizza_sabores (
     id_item INT NOT NULL REFERENCES item_pizza_detalhe(id_item) ON DELETE CASCADE,
     id_sabor INT NOT NULL REFERENCES sabores(id_sabor),
-    fracao NUMERIC(3,2) NOT NULL DEFAULT 1.00 CHECK (fracao > 0 AND fracao <= 1.00),
+    fracao NUMERIC(3,2) NOT NULL DEFAULT 1.00, -- 1.00 (inteira), 0.50 (meio a meio)
     PRIMARY KEY (id_item, id_sabor)
 );
 
--- 5. ÍNDICES DE PERFORMANCE (VELOCIDADE DE RESPOSTA)
-CREATE INDEX idx_pedidos_status ON pedidos(status);
-CREATE INDEX idx_pedidos_cliente ON pedidos(id_cliente);
-CREATE INDEX idx_pedidos_data ON pedidos(data_hora_criacao);
-CREATE INDEX idx_produtos_tipo ON produtos(tipo_produto);
-CREATE INDEX idx_enderecos_cliente ON enderecos_pessoa(cpf_pessoa);
-CREATE INDEX idx_historico_pedido ON historico_status_pedido(id_pedido);
-
--- 6. METADADOS E DOCUMENTAÇÃO
+-- 5. DOCUMENTAÇÃO ADICIONAL (COMENTÁRIOS PARA AUDITORIA)
 COMMENT ON TABLE historico_status_pedido IS 'Armazena cada mudança de estado do pedido para cálculo de tempo de entrega e auditoria.';
 COMMENT ON COLUMN itens_pedido.preco_unitario_vendido IS 'Congela o preço do produto no ato da venda para evitar distorções em relatórios futuros.';

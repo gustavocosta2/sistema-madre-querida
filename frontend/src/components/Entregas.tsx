@@ -1,24 +1,19 @@
 import { Truck, MapPin } from 'lucide-react';
-import type { PedidoAtivo, Motoboy } from '../types';
+import { useMadre } from '../context/MadreContext';
 import { api } from '../api';
 
-interface EntregasProps {
-  pedidos: PedidoAtivo[];
-  motoboys: Motoboy[];
-  refresh: () => void;
-}
-
-export function Entregas({ pedidos, motoboys, refresh }: EntregasProps) {
-  const pedidosLogistica = pedidos.filter(p => ['Aguardando Entrega', 'Em Rota'].includes(p.status));
+export function Entregas() {
+  const { pedidosAtivos, motoboys, refreshOrders } = useMadre();
+  const pedidosLogistica = pedidosAtivos.filter(p => ['Aguardando Entrega', 'Em Rota'].includes(p.status));
 
   const despachar = (id: number) => {
     const selectMoto = document.getElementById(`select-moto-${id}`) as HTMLSelectElement;
     if (!selectMoto?.value) return alert("Selecione um motoboy!");
-    api.patchDespacharPedido(id, selectMoto.value).then(refresh);
+    api.patchDespacharPedido(id, selectMoto.value).then(refreshOrders);
   };
 
   const finalizar = (id: number) => {
-    api.patchStatusPedido(id, 'Finalizado').then(refresh);
+    api.patchStatusPedido(id, 'Finalizado').then(refreshOrders);
   };
 
   return (

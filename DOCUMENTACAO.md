@@ -1,4 +1,4 @@
-# 🍕 Documentação Técnica: Madre Querida (v2.0)
+# 🍕 Documentação Técnica: Madre Querida (v2.4)
 
 Este documento descreve a arquitetura, as regras de negócio e os procedimentos de manutenção do sistema de gestão da **Pizzaria Madre Querida**.
 
@@ -10,101 +10,72 @@ O sistema utiliza uma arquitetura **Client-Server** moderna, separando a interfa
 
 -   **Backend:** API RESTful construída com **FastAPI** (Python 3.10+).
     -   **ORM:** SQLAlchemy para abstração do banco de dados.
-    -   **Seguranca:** Autenticação baseada em Hash de senha e tokens estruturados (Simulado/Base).
+    -   **Seguranca:** Autenticação baseada em Hash de senha e tokens estruturados.
 -   **Frontend:** Aplicação SPA construída com **React 19** e **TypeScript**.
     -   **Build Tool:** Vite (rápido e otimizado).
-    -   **Estilização:** Tailwind CSS 4 (focado em performance e utilitários).
-    -   **Ícones:** Lucide React.
--   **Banco de Dados:** **PostgreSQL** (Relacional), garantindo integridade via chaves estrangeiras e constraints.
+    -   **Estilização:** Tailwind CSS 4.
+-   **Banco de Dados:** **PostgreSQL** (Relacional).
 
 ---
 
-## 🗄️ 2. Modelo de Dados
+## 🗄️ 2. Modelo de Dados (Atualizado)
 
-O banco de dados é normalizado e segue o **Modelo Conceitual V2**.
+O banco de dados segue o **Modelo Conceitual V2** com extensões para o sistema de fidelidade.
+
+### **Fidelidade e CRM**
+-   `clientes.saldo_pontos`: Saldo acumulado (R$ 1,00 gasto = 1 ponto ganho).
+-   `produtos.preco_pontos` e `sabores.preco_pontos`: Custo fixo para resgate do item via pontos.
 
 ### **Núcleo de Vendas**
-*   `pedidos`: Armazena o cabeçalho da venda (cliente, valor total, status atual).
-*   `itens_pedido`: Registro individual de cada produto vendido no pedido.
-*   `item_pizza_detalhe`: Tabela de extensão para itens do tipo "Pizza" (guarda `id_tamanho` e `id_borda`).
-*   `pizza_sabores`: Relaciona quais sabores compõem uma pizza pedida, utilizando o campo `fracao` (ex: 1.0 para inteira, 0.5 para meio a meio).
-
-### **Núcleo de Produtos**
-*   `sabores`: Descrição e disponibilidade das pizzas.
-*   `precificados`: Tabela de preços que cruza Sabor vs. Tamanho.
-*   `bebidas`: Produtos prontos com volume em ML.
+*   `precificado`: Matriz de preços cruzando `id_sabor` x `id_tamanho`. Essencial para pizzas com preços dinâmicos.
+*   `pizza_sabores`: Relaciona quais sabores compõem uma pizza pedida, utilizando o campo `fracao` (1.0 para inteira, 0.5 para meio a meio).
 
 ---
 
-## ⚙️ 3. Regras de Negócio (Backend)
+## ⚙️ 3. Regras de Negócio Avançadas
 
-### **Cálculo de Preço de Pizza**
-O sistema implementa a regra do **Maior Preço**:
-1.  Busca-se o preço base de cada sabor escolhido para o tamanho selecionado.
-2.  O valor base da pizza será o maior valor entre os sabores escolhidos.
-3.  Soma-se o valor adicional da borda (se houver).
+### **Sistema de Fidelidade (Ganho e Resgate)**
+1.  **Ganho de Pontos:** A cada R$ 1,00 efetivamente pago no pedido, o cliente recebe 1 ponto em seu saldo.
+2.  **Resgate de Produtos:**
+    *   Itens podem ser resgatados se o cliente tiver saldo suficiente.
+    *   Um item resgatado entra no pedido com `preco = 0.00`.
+    *   O custo em pontos do item é debitado do saldo do cliente imediatamente após a finalização.
+    *   O cliente não ganha novos pontos sobre o valor de itens resgatados (apenas sobre o excedente pago em dinheiro).
 
-### **Gestão de Status**
-O fluxo de vida de um pedido é linear e auditado pela tabela `historico_status_pedido`:
-`Recebido` ➔ `Em Preparo` ➔ `Aguardando Entrega` ➔ `Em Rota` ➔ `Finalizado`.
+### **Precificação por Tamanho**
+O administrador define o preço base de cada sabor para cada tamanho disponível. Ao montar uma pizza de múltiplos sabores, o sistema aplica o **Maior Preço** entre os sabores selecionados, somando o adicional da borda.
 
 ---
 
-## 💻 4. Organização do Frontend (React)
+## 💻 4. Organização do Frontend e Gestão
 
-O frontend foi refatorado para seguir padrões de **limpeza de código (Clean Code)** e **separação de preocupações**.
+### **Painel de Gestão (Admin Only)**
+O administrador tem controle total sobre o cardápio:
+-   **Pizzas:** Criar novos sabores, definir preços individuais por tamanho, ajustar custo de resgate e excluir sabores.
+-   **Bebidas:** Adicionar novos produtos, definir volume (ml), preço de venda e custo de resgate.
+-   **Visibilidade:** Ativar/Desativar itens do cardápio sem excluí-los (Soft Toggle).
 
-### **Estrutura de Arquivos (`src/`)**
--   `api.ts`: Único ponto de contato com o Backend. Facilita mudar a URL do servidor ou adicionar headers globais.
--   `types.ts`: Centraliza todas as interfaces do TypeScript. Garante que o "humano" saiba exatamente qual é o formato de um Pedido ou Cliente.
--   `hooks/useMadreData.ts`: Centraliza a lógica de busca de dados (SWR - Stale While Revalidate). Atualiza pedidos ativos e histórico automaticamente a cada 5 segundos.
-
-### **Componentes Principais**
--   `PDV.tsx`: Complexo sistema de busca de clientes em tempo real e montagem de carrinho.
--   `Cozinha.tsx`: Dashboard de produção que filtra apenas pedidos em fila ou no forno.
--   `Entregas.tsx`: Controle de logística, permitindo vincular um motoboy ao pedido.
--   `Historico.tsx`: Relatório de vendas do dia (desde as 00:00h) com cálculo de faturamento total.
--   `modals/`: Subcomponentes para formulários pesados (Cadastro de Cliente, Configuração de Pizza).
+### **Modais Estilizados**
+Todos os formulários de edição e criação utilizam componentes isolados em `src/components/modals/`, garantindo consistência visual e segurança contra erros de sintaxe.
 
 ---
 
 ## 🚀 5. Manutenção e Instalação
 
-### **Requisitos**
--   Python 3.10+
--   Node.js 18+
--   PostgreSQL 14+
-
-### **Passo a Passo: Backend**
-1.  Acesse `backend/`.
-2.  Crie o venv: `python -m venv venv`.
-3.  Ative: `.\venv\Scripts\activate`.
-4.  Configure o `.env` com sua `DATABASE_URL`.
-5.  Roda: `python main.py`.
-
-### **Passo a Passo: Frontend**
-1.  Acesse `frontend/`.
-2.  Instale: `npm install`.
-3.  Roda: `npm run dev`.
-4.  Build: `npm run build` (Gera a pasta `dist/` pronta para o servidor).
+### **Passo a Passo: Banco de Dados**
+Ao atualizar o sistema, garanta que o esquema físico possua as colunas de pontos:
+```sql
+ALTER TABLE produtos ADD COLUMN IF NOT EXISTS preco_pontos INTEGER DEFAULT 0;
+ALTER TABLE sabores ADD COLUMN IF NOT EXISTS preco_pontos INTEGER DEFAULT 0;
+```
 
 ---
 
 ## 🧪 6. Guia de Verificação (Testes)
 
-Ao realizar manutenções, o desenvolvedor deve garantir que os seguintes fluxos funcionam:
-
-1.  **Venda Meio a Meio:** Verificar se ao selecionar 2 sabores, o backend salva cada um com `fracao: 0.5`.
-2.  **Venda de Bebida:** Garantir que bebidas não tentam salvar dados na tabela `item_pizza_detalhe`.
-3.  **Fluxo de Status:** O pedido deve sumir da Cozinha ao ser concluído e aparecer instantaneamente na aba de Entregas.
-4.  **Histórico:** Pedidos finalizados devem somar no "Total Vendido" da aba Histórico.
+1.  **Venda com Resgate:** Adicione uma pizza paga e uma bebida via resgate. Verifique se o total reflete apenas a pizza e se os pontos da bebida foram descontados.
+2.  **Nova Pizza:** Cadastre um sabor e verifique se a tabela de preços por tamanho foi preenchida corretamente na aba Gestão.
+3.  **Edição de Preço:** Altere o preço de uma "Coca-Cola" na Gestão e verifique se o novo valor aparece instantaneamente no PDV.
 
 ---
-
-## 📈 7. Próximos Passos Sugeridos
--   [ ] **Sistema de Fidelidade:** Implementar o ganho de 1 ponto a cada R$ 10,00 gastos.
--   [ ] **Impressão Térmica:** Gerar layout formatado para impressoras de cupom (80mm).
--   [ ] **Dashboard Admin:** Gráfico de pizzas mais vendidas por sabor.
-
----
-*Documentação atualizada em: 20 de Abril de 2026.*
+*Documentação atualizada em: 20 de Abril de 2026 (v2.4)*

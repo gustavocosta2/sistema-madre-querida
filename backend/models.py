@@ -42,17 +42,21 @@ class Funcionario(Base):
     salario = Column(Numeric(10,2))
     ativo = Column(Boolean, default=True)
 
+    pessoa = relationship("Pessoa")
+
 class Motoboy(Base):
     __tablename__ = "motoboys"
     cpf_motoboy = Column(String(14), ForeignKey("funcionarios.cpf_funcionario"), primary_key=True)
     placa_veiculo = Column(String(10), nullable=False)
-    tipo_vinculo = Column(String(20), default="Freelancer") # Deve bater com o ENUM: 'Próprio' ou 'Freelancer'
+    tipo_vinculo = Column(String(20), default="Freelancer") 
+    
     funcionario = relationship("Funcionario")
 
 class Cliente(Base):
     __tablename__ = "clientes"
     cpf_cliente = Column(String(14), ForeignKey("pessoas.cpf"), primary_key=True)
     saldo_pontos = Column(Integer, default=0)
+    ultima_visita = Column(DateTime(timezone=True))
     
     pessoa = relationship("Pessoa")
 
@@ -64,6 +68,7 @@ class Produto(Base):
     disponivel = Column(Boolean, default=True)
     descricao = Column(Text)
     tipo_produto = Column(String(20), nullable=False)
+    preco_pontos = Column(Integer, nullable=True) # Custo em pontos para resgate
 
 class Bebida(Base):
     __tablename__ = "bebidas"
@@ -86,6 +91,7 @@ class Sabor(Base):
     nome_sabor = Column(String(50), nullable=False)
     ingredientes = Column(Text)
     disponivel = Column(Boolean, default=True)
+    preco_pontos = Column(Integer, nullable=True) # Adicionado aqui também
 
 class Precificado(Base):
     __tablename__ = "precificado"
