@@ -4,6 +4,7 @@
 -- -----------------------------------------------------
 
 -- 0. LIMPEZA (FACILITA O RE-RUN DURANTE O DESENVOLVIMENTO)
+DROP TABLE IF EXISTS usuarios CASCADE;
 DROP TABLE IF EXISTS promocao_produtos, promocao_sabores, promocao_tamanhos, promocoes CASCADE;
 DROP TABLE IF EXISTS pizza_sabores, item_pizza_detalhe, itens_pedido, pagamentos, historico_status_pedido, pedidos CASCADE;
 DROP TABLE IF EXISTS precificado, sabores, bordas, tamanhos, bebidas, produtos CASCADE;
@@ -14,6 +15,15 @@ DROP TYPE IF EXISTS status_pedido_enum, origem_pedido_enum, tipo_vinculo_enum CA
 CREATE TYPE status_pedido_enum AS ENUM ('Recebido', 'Em Preparo', 'Aguardando Entrega', 'Em Rota', 'Finalizado', 'Cancelado');
 CREATE TYPE origem_pedido_enum AS ENUM ('WhatsApp', 'Telefone', 'Balcão', 'iFood');
 CREATE TYPE tipo_vinculo_enum AS ENUM ('Próprio', 'Freelancer');
+
+-- Tabela de Usuários (Login e Acesso)
+CREATE TABLE usuarios (
+    id_usuario SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    senha_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(20) DEFAULT 'funcionario',
+    ativo BOOLEAN DEFAULT TRUE
+);
 
 -- 2. MÓDULO DE PESSOAS E ATORES (HERANÇA E ENDEREÇAMENTO)
 CREATE TABLE pessoas (
@@ -36,6 +46,7 @@ CREATE TABLE enderecos_pessoa (
     cpf_pessoa VARCHAR(14) NOT NULL REFERENCES pessoas(cpf) ON DELETE CASCADE,
     logradouro VARCHAR(100) NOT NULL,
     numero VARCHAR(10),
+    complemento VARCHAR(50), -- NOVO CAMPO
     bairro VARCHAR(50) NOT NULL,
     cidade VARCHAR(50) DEFAULT 'São João del Rei',
     uf CHAR(2) DEFAULT 'MG',

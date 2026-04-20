@@ -1,12 +1,12 @@
 @import "tailwindcss";
 
 @theme {
-  --color-madre-red: #cc3333;
-  --color-madre-green: #2e7d32;
-  --color-madre-yellow: #fbc02d;
+  --color-madre-red: #b91c1c;
+  --color-madre-green: #15803d;
+  --color-madre-yellow: #f59e0b;
 }
 
-/* Reset básico para garantir que o layout ocupe a tela toda */
+/* Reset Global e Cursor Pointer */
 html, body, #root {
   height: 100%;
   margin: 0;
@@ -16,5 +16,34 @@ html, body, #root {
 
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: #f3f4f6;
+  background-color: #fcfaf7;
+  color: #1f2937;
+}
+
+/* Regra de Ouro: Tudo que for clicável ganha a mãozinha */
+button, 
+select, 
+input[type="submit"],
+.clickable {
+  cursor: pointer;
+}
+
+/* Garante que botões desativados não mostrem a mãozinha */
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Scrollbar fina e elegante para não poluir o visual fino */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #d1d5db;
 }

@@ -2,12 +2,38 @@ from sqlalchemy import Column, Integer, String, Boolean, Numeric, ForeignKey, Ta
 from sqlalchemy.orm import relationship
 from database import Base
 
+# --- MÓDULO DE SEGURANÇA E ACESSO ---
+class Usuario(Base):
+    __tablename__ = "usuarios"
+    id_usuario = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, nullable=False)
+    senha_hash = Column(String(255), nullable=False)
+    role = Column(String(20), default="funcionario") 
+    ativo = Column(Boolean, default=True)
+
 # --- MÓDULO DE PESSOAS ---
 class Pessoa(Base):
     __tablename__ = "pessoas"
     cpf = Column(String(14), primary_key=True)
     nome = Column(String(100), nullable=False)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
+    
+    enderecos = relationship("Endereco", back_populates="pessoa")
+
+class Endereco(Base):
+    __tablename__ = "enderecos_pessoa"
+    id_endereco = Column(Integer, primary_key=True, index=True)
+    cpf_pessoa = Column(String(14), ForeignKey("pessoas.cpf"))
+    logradouro = Column(String(100), nullable=False)
+    numero = Column(String(10))
+    complemento = Column(String(50))
+    bairro = Column(String(50))
+    cidade = Column(String(50))
+    cep = Column(String(9))
+    ponto_referencia = Column(Text)
+    e_principal = Column(Boolean, default=False)
+
+    pessoa = relationship("Pessoa", back_populates="enderecos")
 
 class Funcionario(Base):
     __tablename__ = "funcionarios"
@@ -20,14 +46,15 @@ class Motoboy(Base):
     __tablename__ = "motoboys"
     cpf_motoboy = Column(String(14), ForeignKey("funcionarios.cpf_funcionario"), primary_key=True)
     placa_veiculo = Column(String(10), nullable=False)
-    tipo_vinculo = Column(String(20))
-
+    tipo_vinculo = Column(String(20), default="Freelancer") # Deve bater com o ENUM: 'Próprio' ou 'Freelancer'
     funcionario = relationship("Funcionario")
 
 class Cliente(Base):
     __tablename__ = "clientes"
     cpf_cliente = Column(String(14), ForeignKey("pessoas.cpf"), primary_key=True)
     saldo_pontos = Column(Integer, default=0)
+    
+    pessoa = relationship("Pessoa")
 
 # --- MÓDULO DE PRODUTOS ---
 class Produto(Base):
@@ -43,6 +70,9 @@ class Bebida(Base):
     id_bebida = Column(Integer, ForeignKey("produtos.id_produto"), primary_key=True)
     volume_ml = Column(Integer, nullable=False)
     preco_venda = Column(Numeric(10, 2), nullable=False)
+    
+    # A LINHA QUE FALTAVA:
+    produto = relationship("Produto")
 
 class Tamanho(Base):
     __tablename__ = "tamanhos"
@@ -75,12 +105,14 @@ class Pedido(Base):
     id_pedido = Column(Integer, primary_key=True, index=True)
     id_cliente = Column(String(14), ForeignKey("clientes.cpf_cliente"), nullable=True)
     id_motoboy = Column(String(14), ForeignKey("motoboys.cpf_motoboy"), nullable=True)
+    id_endereco_entrega = Column(Integer, ForeignKey("enderecos_pessoa.id_endereco"), nullable=True)
     status = Column(String(30), default="Recebido")
     origem = Column(String(30), default="Balcão")
     valor_total = Column(Numeric(10, 2), default=0.00)
     data_hora_criacao = Column(DateTime(timezone=True), server_default=func.now())
 
     itens = relationship("ItemPedido", back_populates="pedido")
+    endereco = relationship("Endereco")
 
 class HistoricoStatusPedido(Base):
     __tablename__ = "historico_status_pedido"
