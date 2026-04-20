@@ -68,6 +68,6 @@ class ItemPedidoCreate(BaseModel):
     preco: Decimal
 
 class PedidoCreate(BaseModel):
-    cpf_cliente: str
-    id_endereco_entrega: int
+    cpf_cliente: Optional[str] = None
+    id_endereco_entrega: Optional[int] = None
     itens: List[ItemPedidoCreate]

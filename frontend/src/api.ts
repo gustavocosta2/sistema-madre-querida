@@ -12,7 +12,7 @@ export const api = {
 
   // --- PEDIDOS ---
   getPedidosAtivos: () => axios.get(`${baseUrl}/pedidos/ativos`),
-  getHistoricoPedidos: () => axios.get(`${baseUrl}/pedidos/historico`),
+  getHistoricoPedidos: () => axios.get(`${baseUrl}/pedidos/historico_dia`),
   patchStatusPedido: (id: number, status: string) => 
     axios.patch(`${baseUrl}/pedidos/${id}/status?novo_status=${status}`),
   patchDespacharPedido: (id: number, cpfMotoboy: string) => 

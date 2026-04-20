@@ -9,7 +9,7 @@ interface PDVProps {
   precos: Preco[];
   tamanhos: Tamanho[];
   bordas: Borda[];
-  onAddPizza: (sabor: Sabor, tamanho: Tamanho, borda: Borda, saborExtra?: Sabor | null) => void;
+  onAddPizza: (sabor: Sabor, tamanho: Tamanho, borda: Borda | null, saborExtra?: Sabor | null) => void;
   onAddBebida: (bebida: Bebida) => void;
   carrinho: ItemCarrinho[];
   setCarrinho: (c: ItemCarrinho[]) => void;

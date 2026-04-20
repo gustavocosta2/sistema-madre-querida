@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import List
 import os
@@ -276,11 +277,14 @@ def criar_pedido(pedido_in: schemas.PedidoCreate, db: Session = Depends(database
 
             # Se for Pizza, cadastrar detalhes específicos
             if i_in.tipo == 'pizza':
-                # Detalhes (Tamanho e Borda)
+                # Detalhes (Tamanho e Borda) - Fallbacks seguros
+                id_tam = i_in.id_tamanho if i_in.id_tamanho else 3 # Grande padrão
+                id_bor = i_in.id_borda if i_in.id_borda else 1     # Sem Borda padrão
+                
                 detalhe = models.ItemPizzaDetalhe(
                     id_item=item_obj.id_item,
-                    id_tamanho=i_in.id_tamanho,
-                    id_borda=i_in.id_borda
+                    id_tamanho=id_tam,
+                    id_borda=id_bor
                 )
                 db.add(detalhe)
                 
@@ -386,7 +390,7 @@ def despachar_pedido(id_pedido: int, cpf_motoboy: str, db: Session = Depends(dat
     return {"status": "Em Rota", "motoboy": cpf_motoboy}
 
 # --- NOVA ROTA: HISTÓRICO DE PEDIDOS (CONCLUÍDOS) ---
-@app.get("/pedidos/historico")
+@app.get("/pedidos/historico_dia")
 def listar_historico(db: Session = Depends(database.get_db)):
     from datetime import datetime, date
     
