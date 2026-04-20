@@ -113,6 +113,7 @@ class Pedido(Base):
 
     itens = relationship("ItemPedido", back_populates="pedido")
     endereco = relationship("Endereco")
+    cliente = relationship("Cliente", foreign_keys=[id_cliente])
 
 class HistoricoStatusPedido(Base):
     __tablename__ = "historico_status_pedido"
@@ -130,6 +131,7 @@ class ItemPedido(Base):
     preco_unitario_vendido = Column(Numeric(10, 2), nullable=False)
 
     pedido = relationship("Pedido", back_populates="itens")
+    produto = relationship("Produto")
     detalhe_pizza = relationship("ItemPizzaDetalhe", uselist=False, back_populates="item")
 
 class ItemPizzaDetalhe(Base):
