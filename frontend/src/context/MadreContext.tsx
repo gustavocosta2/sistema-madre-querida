@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { api } from '../api';
-import type { Sabor, Tamanho, Borda, Preco, Motoboy, Bebida, PedidoAtivo, ClienteBusca, Endereco, ItemCarrinho } from './types';
+import type { Sabor, Tamanho, Borda, Preco, Motoboy, Bebida, PedidoAtivo, Promocao } from '../types';
 
 interface MadreContextType {
   loading: boolean;
@@ -10,6 +10,7 @@ interface MadreContextType {
   precos: Preco[];
   motoboys: Motoboy[];
   bebidas: Bebida[];
+  promocoes: Promocao[];
   pedidosAtivos: PedidoAtivo[];
   historicoPedidos: any[];
   user: { username: string; role: string } | null;
@@ -33,6 +34,7 @@ export function MadreProvider({ children }: { children: React.ReactNode }) {
   const [precos, setPrecos] = useState<Preco[]>([]);
   const [motoboys, setMotoboys] = useState<Motoboy[]>([]);
   const [bebidas, setBebidas] = useState<Bebida[]>([]);
+  const [promocoes, setPromocoes] = useState<Promocao[]>([]);
   const [pedidosAtivos, setPedidosAtivos] = useState<PedidoAtivo[]>([]);
   const [historicoPedidos, setHistoricoPedidos] = useState<any[]>([]);
 
@@ -40,13 +42,13 @@ export function MadreProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("♻️ REFRESH ALL: Buscando dados de referência...");
       const fetchSafe = (p: Promise<any>) => p.then(res => res.data).catch(() => []);
-      const [s, t, b, p, m, beb] = await Promise.all([
+      const [s, t, b, p, m, beb, promos] = await Promise.all([
         fetchSafe(api.getSabores()), fetchSafe(api.getTamanhos()),
         fetchSafe(api.getBordas()), fetchSafe(api.getPrecos()),
-        fetchSafe(api.getMotoboys()), fetchSafe(api.getBebidas())
+        fetchSafe(api.getMotoboys()), fetchSafe(api.getBebidas()),
+        fetchSafe(api.getPromocoes())
       ]);
-      console.log("✅ DADOS RECEBIDOS:", { sabores: s.length, precos: p.length });
-      setSabores(s); setTamanhos(t); setBordas(b); setPrecos(p); setMotoboys(m); setBebidas(beb);
+      setSabores(s); setTamanhos(t); setBordas(b); setPrecos(p); setMotoboys(m); setBebidas(beb); setPromocoes(promos);
     } finally {
       setLoading(false);
     }
@@ -55,7 +57,6 @@ export function MadreProvider({ children }: { children: React.ReactNode }) {
   const refreshOrders = useCallback(async () => {
     if (!user) return;
     try {
-      console.log("♻️ REFRESH ORDERS: Buscando pedidos...");
       const [ativos, hist] = await Promise.all([
         api.getPedidosAtivos(),
         api.getHistoricoPedidos()
@@ -74,13 +75,13 @@ export function MadreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!user) return;
     refreshOrders();
-    const interval = setInterval(refreshOrders, 5000);
+    const interval = setInterval(refreshOrders, 10000);
     return () => clearInterval(interval);
   }, [user, refreshOrders]);
 
   return (
     <MadreContext.Provider value={{
-      loading, sabores, tamanhos, bordas, precos, motoboys, bebidas,
+      loading, sabores, tamanhos, bordas, precos, motoboys, bebidas, promocoes,
       pedidosAtivos, historicoPedidos, user, setUser, refreshAll, refreshOrders
     }}>
       {children}

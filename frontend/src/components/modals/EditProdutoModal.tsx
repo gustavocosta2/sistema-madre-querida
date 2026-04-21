@@ -81,22 +81,45 @@ export function EditProdutoModal({ item, tipo, onClose, onConfirm, onDelete }: E
 
           <div className="grid grid-cols-2 gap-4 pt-2">
             {tipo === 'bebida' && (
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-gray-400 uppercase ml-4">Preço (R$)</label>
-                <input 
-                  type="number"
-                  value={dados.preco} 
-                  onChange={e => setDados({...dados, preco: parseFloat(e.target.value)})}
-                  className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl p-4 font-black outline-none focus:border-black"
-                />
-              </div>
+              <>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase ml-4">Preço (R$)</label>
+                  <input 
+                    type="number"
+                    min="0"
+                    value={dados.preco} 
+                    onChange={e => {
+                        const val = parseFloat(e.target.value);
+                        setDados({...dados, preco: val < 0 ? 0 : val})
+                    }}
+                    className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl p-4 font-black outline-none focus:border-black"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase ml-4">Estoque</label>
+                  <input 
+                    type="number"
+                    min="0"
+                    value={dados.quantidade} 
+                    onChange={e => {
+                        const val = parseInt(e.target.value);
+                        setDados({...dados, quantidade: val < 0 ? 0 : val})
+                    }}
+                    className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl p-4 font-black outline-none focus:border-black"
+                  />
+                </div>
+              </>
             )}
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase ml-4">Resgate (Pts)</label>
               <input 
                 type="number"
+                min="0"
                 value={dados.preco_pontos} 
-                onChange={e => setDados({...dados, preco_pontos: parseInt(e.target.value)})}
+                onChange={e => {
+                    const val = parseInt(e.target.value);
+                    setDados({...dados, preco_pontos: val < 0 ? 0 : val})
+                }}
                 className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl p-4 font-black outline-none focus:border-black text-amber-600"
               />
             </div>

@@ -12,7 +12,8 @@ interface NovoClienteModalProps {
 export function NovoClienteModal({ clienteSelecionado, onClose, onSuccess }: NovoClienteModalProps) {
   const [novoCli, setNovoCli] = useState({ 
     cpf: '', nome: '', logradouro: '', numero: '', 
-    bairro: '', complemento: '', cep: '', ponto_referencia: '' 
+    bairro: '', complemento: '', cep: '', ponto_referencia: '',
+    telefone: ''
   });
 
   const handleSalvar = async () => {
@@ -21,7 +22,7 @@ export function NovoClienteModal({ clienteSelecionado, onClose, onSuccess }: Nov
         const res = await api.postEndereco({ cpf_pessoa: clienteSelecionado.cpf, ...novoCli });
         onSuccess(clienteSelecionado, res.data);
       } else {
-        const res = await api.postClienteCompleto(novoCli);
+        const res = await api.postClienteCompleto({ ...novoCli, telefones: novoCli.telefone ? [novoCli.telefone] : [] });
         onSuccess({ cpf: novoCli.cpf, nome: novoCli.nome, pontos: 0 }, { id_endereco: res.data.id_endereco });
       }
     } catch {
@@ -47,6 +48,12 @@ export function NovoClienteModal({ clienteSelecionado, onClose, onSuccess }: Nov
                 <label className="text-xs font-black text-gray-900 ml-6 uppercase">Nome *</label>
                 <input value={novoCli.nome} onChange={e => setNovoCli({...novoCli, nome: e.target.value})} className="w-full bg-[#fcfaf7] border-4 border-gray-200 rounded-[2rem] p-6 text-xl font-black" placeholder="Nome do Cliente" />
               </div>
+            </div>
+          )}
+          {!clienteSelecionado && (
+            <div className="space-y-2">
+              <label className="text-xs font-black text-gray-900 ml-6 uppercase">Telefone / WhatsApp *</label>
+              <input value={novoCli.telefone} onChange={e => setNovoCli({...novoCli, telefone: e.target.value})} className="w-full bg-[#fcfaf7] border-4 border-gray-200 rounded-[2rem] p-6 text-xl font-black" placeholder="(00) 00000-0000" />
             </div>
           )}
           <div className="space-y-6 pt-8 border-t-4 border-gray-100">

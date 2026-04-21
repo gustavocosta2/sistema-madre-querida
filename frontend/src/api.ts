@@ -32,6 +32,9 @@ export const api = {
   getBordas: () => axios.get(`${baseUrl}/bordas`),
   getPrecos: () => axios.get(`${baseUrl}/precos`),
   getMotoboys: () => axios.get(`${baseUrl}/motoboys`),
+  getPromocoes: () => axios.get(`${baseUrl}/promocoes`),
+  postPromocao: (payload: any) => axios.post(`${baseUrl}/promocoes`, payload),
+  deletePromocao: (id: number) => axios.delete(`${baseUrl}/promocoes/${id}`),
   getBebidas: () => axios.get(`${baseUrl}/bebidas`),
   postBebida: (bebida: any) => 
     axios.post(`${baseUrl}/bebidas`, bebida),

@@ -3,6 +3,7 @@ export interface Sabor {
     nome_sabor: string; 
     ingredientes: string; 
     disponivel?: boolean; 
+    preco_pontos?: number;
 }
 
 export interface Tamanho { 
@@ -22,13 +23,29 @@ export interface Preco {
     id_tamanho: number; 
     preco_base: string; 
 }
+
 export interface Bebida { 
     id_produto: number; 
     nome: string; 
     volume: number; 
     preco: string; 
+    quantidade: number;
     disponivel?: boolean; 
     preco_pontos?: number; 
+}
+
+export interface Telefone {
+    id_telefone: number;
+    cpf_pessoa: string;
+    numero: string;
+    e_principal: boolean;
+}
+
+export interface Promocao {
+    id_promo: number;
+    nome: string;
+    status: boolean;
+    valor_desconto: string;
 }
 
 export interface ItemCarrinho { 
@@ -40,11 +57,10 @@ export interface ItemCarrinho {
     pago_com_pontos?: boolean;
     custo_pontos?: number;
     sabores?: number[]; 
-...
-
     id_tamanho?: number; 
     id_borda?: number; 
-    detalhe?: string; 
+    detalhe?: string; // Mapeado para 'observacao' no banco
+    observacao?: string;
 }
 
 export interface Motoboy { 
@@ -58,6 +74,7 @@ export interface ClienteBusca {
     cpf: string; 
     nome: string; 
     pontos: number; 
+    telefones?: string[];
 }
 
 export interface Endereco { 
@@ -70,16 +87,36 @@ export interface Endereco {
     ponto_referencia?: string; 
 }
 
+export interface Pagamento {
+    forma_pagamento: string;
+    valor_pago: number;
+}
+
 export interface PedidoAtivo {
     id_pedido: number;
     status: string;
     data_hora: string;
+    valor_total: number;
+    valor_recebido?: number;
+    troco?: number;
+    taxa_entrega?: number;
+    quilometragem?: number;
+    origem: string;
     itens: {
-        sabor: string;
-        ingredientes: string;
-        tamanho: string;
-        borda: string;
+        id_item: number;
+        tipo: string;
+        nome: string;
         quantidade: number;
+        preco_unitario: number;
+        observacao?: string;
+        detalhes_pizza?: {
+            tamanho: string;
+            borda?: string;
+            sabores: string[];
+        };
     }[];
     endereco?: string;
+    cliente_nome?: string;
+    cliente_cpf?: string;
+    pagamentos?: Pagamento[];
 }

@@ -217,10 +217,51 @@ def listar_bordas(db: Session = Depends(database.get_db)): return db.query(model
 @app.get("/precos")
 def listar_precos(db: Session = Depends(database.get_db)): return db.query(models.Precificado).all()
 
-@app.get("/motoboys")
-def listar_motoboys(db: Session = Depends(database.get_db)):
-    q = db.query(models.Motoboy).all()
-    return [{"cpf": m.cpf_motoboy, "nome": m.funcionario.pessoa.nome, "placa": m.placa_veiculo} for m in q]
+@app.get("/promocoes")
+def listar_promocoes(db: Session = Depends(database.get_db)):
+    promos = db.query(models.Promocao).all()
+    return promos
+
+@app.post("/promocoes")
+def criar_promocao(payload: dict, db: Session = Depends(database.get_db)):
+    try:
+        nova = models.Promocao(
+            nome=payload.get("nome"),
+            status=payload.get("status", True),
+            valor_desconto=Decimal(str(payload.get("valor_desconto", 0)))
+        )
+        db.add(nova)
+        db.flush()
+
+        # Adiciona associações
+        if "ids_produtos" in payload:
+            for id_p in payload["ids_produtos"]:
+                prod = db.get(models.Produto, id_p)
+                if prod: nova.produtos.append(prod)
+        
+        if "ids_sabores" in payload:
+            for id_s in payload["ids_sabores"]:
+                sabor = db.get(models.Sabor, id_s)
+                if sabor: nova.sabores.append(sabor)
+        
+        if "ids_tamanhos" in payload:
+            for id_t in payload["ids_tamanhos"]:
+                tam = db.get(models.Tamanho, id_t)
+                if tam: nova.tamanhos.append(tam)
+
+        db.commit()
+        return {"id": nova.id_promo}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(400, str(e))
+
+@app.delete("/promocoes/{id_promo}")
+def excluir_promocao(id_promo: int, db: Session = Depends(database.get_db)):
+    promo = db.get(models.Promocao, id_promo)
+    if not promo: raise HTTPException(404, "Promoção não encontrada")
+    db.delete(promo)
+    db.commit()
+    return {"status": "sucesso"}
 
 @app.post("/login", response_model=schemas.TokenResponse)
 def login(login_data: schemas.LoginRequest, db: Session = Depends(database.get_db)):

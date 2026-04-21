@@ -40,11 +40,18 @@ export function Cozinha() {
                   <div className="space-y-4">
                     {p.itens?.map((i, idx) => (
                       <div key={idx} className="bg-white/80 p-6 rounded-3xl border-2 border-gray-100 group">
-                        <p className="font-black text-xl uppercase text-gray-900 leading-tight">{i.sabor}</p>
-                        <p className="text-[9px] text-gray-400 font-bold uppercase mt-2 leading-relaxed">{i.ingredientes}</p>
+                        <p className="font-black text-xl uppercase text-gray-900 leading-tight">
+                          {i.tipo === 'pizza' ? (i.detalhes_pizza?.sabores.join(' / ')) : i.nome}
+                        </p>
+                        {i.observacao && (
+                          <div className="mt-2 bg-yellow-50 border-l-4 border-yellow-400 p-2">
+                             <p className="text-[10px] font-black uppercase text-yellow-700">⚠️ OBS: {i.observacao}</p>
+                          </div>
+                        )}
                         <div className="flex items-center gap-2 mt-4">
-                          <span className="bg-white text-gray-600 text-[8px] font-black px-2 py-1 rounded-full border border-gray-200 uppercase">{i.tamanho}</span>
-                          {i.borda !== 'Sem Borda' && <span className="bg-amber-100 text-amber-800 text-[8px] font-black px-2 py-1 rounded-full uppercase border border-amber-200">Borda {i.borda}</span>}
+                          {i.detalhes_pizza && <span className="bg-white text-gray-600 text-[8px] font-black px-2 py-1 rounded-full border border-gray-200 uppercase">{i.detalhes_pizza.tamanho}</span>}
+                          {i.detalhes_pizza?.borda && i.detalhes_pizza.borda !== 'Sem Borda' && <span className="bg-amber-100 text-amber-800 text-[8px] font-black px-2 py-1 rounded-full uppercase border border-amber-200">Borda {i.detalhes_pizza.borda}</span>}
+                          {i.tipo === 'bebida' && <span className="bg-blue-100 text-blue-800 text-[8px] font-black px-2 py-1 rounded-full uppercase border border-blue-200">Bebida</span>}
                         </div>
                       </div>
                     ))}

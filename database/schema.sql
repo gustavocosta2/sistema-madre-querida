@@ -1,9 +1,13 @@
 -- -----------------------------------------------------
 -- Esquema Físico: Pizzaria Madre Querida (PostgreSQL)
--- Versão: 2.3
+-- Versão: 2.4
 -- -----------------------------------------------------
 
 -- 0. LIMPEZA (FACILITA O RE-RUN DURANTE O DESENVOLVIMENTO)
+DROP TABLE IF EXISTS promocao_tamanhos CASCADE;
+DROP TABLE IF EXISTS promocao_sabores CASCADE;
+DROP TABLE IF EXISTS promocao_produtos CASCADE;
+DROP TABLE IF EXISTS promocoes CASCADE;
 DROP TABLE IF EXISTS pizza_sabores CASCADE;
 DROP TABLE IF EXISTS item_pizza_detalhe CASCADE;
 DROP TABLE IF EXISTS itens_pedido CASCADE;
@@ -19,6 +23,7 @@ DROP TABLE IF EXISTS produtos CASCADE;
 DROP TABLE IF EXISTS motoboys CASCADE;
 DROP TABLE IF EXISTS funcionarios CASCADE;
 DROP TABLE IF EXISTS clientes CASCADE;
+DROP TABLE IF EXISTS telefones_pessoa CASCADE;
 DROP TABLE IF EXISTS enderecos_pessoa CASCADE;
 DROP TABLE IF EXISTS usuarios CASCADE;
 DROP TABLE IF EXISTS pessoas CASCADE;
@@ -63,6 +68,13 @@ CREATE TABLE enderecos_pessoa (
     e_principal BOOLEAN DEFAULT FALSE
 );
 
+CREATE TABLE telefones_pessoa (
+    id_telefone SERIAL PRIMARY KEY,
+    cpf_pessoa VARCHAR(14) NOT NULL REFERENCES pessoas(cpf) ON DELETE CASCADE,
+    numero VARCHAR(20) NOT NULL,
+    e_principal BOOLEAN DEFAULT FALSE
+);
+
 -- 3. MÓDULO DE CRM E RH
 CREATE TABLE clientes (
     cpf_cliente VARCHAR(14) PRIMARY KEY REFERENCES pessoas(cpf) ON DELETE CASCADE,
@@ -97,7 +109,8 @@ CREATE TABLE produtos (
 CREATE TABLE bebidas (
     id_bebida INT PRIMARY KEY REFERENCES produtos(id_produto) ON DELETE CASCADE,
     volume_ml INT NOT NULL CHECK (volume_ml > 0),
-    preco_venda NUMERIC(10,2) NOT NULL CHECK (preco_venda >= 0)
+    preco_venda NUMERIC(10,2) NOT NULL CHECK (preco_venda >= 0),
+    quantidade INT NOT NULL DEFAULT 0 CHECK (quantidade >= 0)
 );
 
 CREATE TABLE tamanhos (
@@ -128,6 +141,32 @@ CREATE TABLE precificado (
     PRIMARY KEY (id_sabor, id_tamanho)
 );
 
+-- MÓDULO DE PROMOÇÕES
+CREATE TABLE promocoes (
+    id_promo SERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    status BOOLEAN DEFAULT TRUE,
+    valor_desconto NUMERIC(10,2) NOT NULL CHECK (valor_desconto >= 0)
+);
+
+CREATE TABLE promocao_produtos (
+    id_promo INT NOT NULL REFERENCES promocoes(id_promo) ON DELETE CASCADE,
+    id_produto INT NOT NULL REFERENCES produtos(id_produto) ON DELETE CASCADE,
+    PRIMARY KEY (id_promo, id_produto)
+);
+
+CREATE TABLE promocao_sabores (
+    id_promo INT NOT NULL REFERENCES promocoes(id_promo) ON DELETE CASCADE,
+    id_sabor INT NOT NULL REFERENCES sabores(id_sabor) ON DELETE CASCADE,
+    PRIMARY KEY (id_promo, id_sabor)
+);
+
+CREATE TABLE promocao_tamanhos (
+    id_promo INT NOT NULL REFERENCES promocoes(id_promo) ON DELETE CASCADE,
+    id_tamanho INT NOT NULL REFERENCES tamanhos(id_tamanho) ON DELETE CASCADE,
+    PRIMARY KEY (id_promo, id_tamanho)
+);
+
 -- 4. MÓDULO OPERACIONAL (VENDAS E RASTREABILIDADE)
 CREATE TABLE pedidos (
     id_pedido SERIAL PRIMARY KEY,
@@ -137,9 +176,10 @@ CREATE TABLE pedidos (
     status status_pedido_enum DEFAULT 'Recebido',
     origem origem_pedido_enum DEFAULT 'WhatsApp',
     valor_total NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (valor_total >= 0),
-    valor_recebido NUMERIC(10,2) CHECK (valor_recebido >= 0),
+    valor_recebido NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (valor_recebido >= 0),
     troco NUMERIC(10,2) DEFAULT 0 CHECK (troco >= 0),
     taxa_entrega NUMERIC(10,2) DEFAULT 0 CHECK (taxa_entrega >= 0),
+    quilometragem NUMERIC(10,2) DEFAULT 0 CHECK (quilometragem >= 0),
     data_hora_criacao TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -165,7 +205,8 @@ CREATE TABLE itens_pedido (
     id_pedido INT NOT NULL REFERENCES pedidos(id_pedido) ON DELETE CASCADE,
     id_produto INT NOT NULL REFERENCES produtos(id_produto),
     quantidade INTEGER NOT NULL DEFAULT 1 CHECK (quantidade > 0),
-    preco_unitario_vendido NUMERIC(10,2) NOT NULL -- Congela o preço no ato da venda
+    preco_unitario_vendido NUMERIC(10,2) NOT NULL, -- Congela o preço no ato da venda
+    observacao TEXT
 );
 
 -- Detalhes exclusivos para itens do tipo 'Pizza'

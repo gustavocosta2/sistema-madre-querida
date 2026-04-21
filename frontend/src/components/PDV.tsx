@@ -2,7 +2,7 @@ import { Search, UserPlus, Plus, Coffee, AlertTriangle, ShoppingCart, Info, X, G
 import { useState, useEffect } from 'react';
 import { api } from '../api';
 import { useMadre } from '../context/MadreContext';
-import type { ClienteBusca, Endereco, ItemCarrinho, Sabor, Bebida } from '../types';
+import type { ClienteBusca, Endereco, ItemCarrinho, Sabor } from '../types';
 
 interface PDVProps {
   carrinho: ItemCarrinho[];
@@ -11,7 +11,7 @@ interface PDVProps {
   setClienteSelecionado: (c: ClienteBusca | null) => void;
   enderecoEntrega: Endereco | null;
   setEnderecoEntrega: (e: Endereco | null) => void;
-  onFinalizar: () => void;
+  onFinalizar: (extra: any) => void;
   onOpenNovoCliente: () => void;
   onOpenConfigPizza: (s: Sabor, custoPontos?: number | null) => void;
 }
@@ -26,6 +26,15 @@ export function PDV({
   const [sugestoesClientes, setSugestoesClientes] = useState<ClienteBusca[]>([]);
   const [enderecosCliente, setEnderecosCliente] = useState<Endereco[]>([]);
   const [pdvTab, setPdvTab] = useState<'pizzas' | 'bebidas'>('pizzas');
+
+  // Novos campos de fechamento
+  const [taxaEntrega, setTaxaEntrega] = useState(0);
+  const [valorRecebido, setValorRecebido] = useState(0);
+  const [quilometragem, setQuilometragem] = useState(0);
+  const [formaPagamento, setFormaPagamento] = useState('Dinheiro');
+
+  const totalPedido = carrinho.reduce((a, b) => a + b.preco, 0) + taxaEntrega;
+  const troco = valorRecebido > totalPedido ? valorRecebido - totalPedido : 0;
 
   useEffect(() => {
     if (buscaCliente.length > 2) {
@@ -186,6 +195,7 @@ export function PDV({
               <button onClick={() => setCarrinho(carrinho.filter(x => x.id !== i.id))} className="absolute -right-2 -top-2 w-8 h-8 bg-red-600 text-white rounded-full flex items-center justify-center shadow-xl"><X size={16} strokeWidth={4} /></button>
               <p className="font-black text-sm uppercase text-gray-900 leading-tight">{i.nome}</p>
               <p className="text-[10px] font-bold text-[#b91c1c] uppercase mt-1">{i.detalhe}</p>
+              {i.observacao && <p className="text-[9px] italic text-gray-500 mt-1">Nota: {i.observacao}</p>}
               <p className={`text-right font-black text-xl mt-2 italic ${i.pago_com_pontos ? 'text-amber-600' : 'text-green-700'}`}>
                 {i.pago_com_pontos ? `${i.custo_pontos} Pts` : `R$ ${i.preco.toFixed(2)}`}
               </p>
@@ -193,20 +203,84 @@ export function PDV({
           ))}
           {carrinho.length === 0 && <div className="py-20 text-center text-gray-200 font-black text-5xl uppercase italic tracking-tighter">Vazio</div>}
         </div>
+
+        {/* CAMPOS DE FECHAMENTO */}
+        <div className="p-6 bg-[#fcfaf7] border-t-4 border-gray-100 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-gray-400 ml-2">Taxa Entrega</label>
+              <input 
+                type="number" 
+                min="0"
+                value={taxaEntrega} 
+                onChange={e => {
+                  const val = parseFloat(e.target.value);
+                  setTaxaEntrega(val < 0 ? 0 : (val || 0));
+                }} 
+                className="w-full bg-white border-2 border-gray-100 rounded-xl p-3 font-black text-sm" 
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-gray-400 ml-2">Km Entrega</label>
+              <input 
+                type="number" 
+                min="0"
+                value={quilometragem} 
+                onChange={e => {
+                  const val = parseFloat(e.target.value);
+                  setQuilometragem(val < 0 ? 0 : (val || 0));
+                }} 
+                className="w-full bg-white border-2 border-gray-100 rounded-xl p-3 font-black text-sm" 
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-gray-400 ml-2">Pagamento</label>
+              <select value={formaPagamento} onChange={e => setFormaPagamento(e.target.value)} className="w-full bg-white border-2 border-gray-100 rounded-xl p-3 font-black text-sm outline-none">
+                <option>Dinheiro</option>
+                <option>PIX</option>
+                <option>Débito</option>
+                <option>Crédito</option>
+                <option>iFood (Online)</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-gray-400 ml-2">Valor Recebido</label>
+              <input 
+                type="number" 
+                min="0"
+                value={valorRecebido} 
+                onChange={e => {
+                  const val = parseFloat(e.target.value);
+                  setValorRecebido(val < 0 ? 0 : (val || 0));
+                }} 
+                className="w-full bg-white border-2 border-gray-100 rounded-xl p-3 font-black text-sm" 
+              />
+            </div>
+          </div>
+        </div>
+
         <div className="p-10 bg-gray-100 border-t-4 border-gray-200 space-y-4 shadow-inner">
           <div className="space-y-1">
             <div className="flex justify-between items-baseline text-gray-400">
-              <span className="text-[9px] font-black uppercase tracking-widest">Resgate de Pontos</span>
-              <span className="text-sm font-black italic">{totalEmPontosNoCarrinho} Pts</span>
+              <span className="text-[9px] font-black uppercase tracking-widest">Troco a devolver</span>
+              <span className="text-sm font-black italic text-red-600">R$ {troco.toFixed(2)}</span>
             </div>
             <div className="flex justify-between items-baseline text-gray-950 pt-2 border-t border-gray-200">
-              <span className="text-[11px] font-black uppercase">Total a Pagar</span>
-              <span className="text-5xl font-black tracking-tighter italic">R$ {carrinho.reduce((a, b) => a + b.preco, 0).toFixed(2)}</span>
+              <span className="text-[11px] font-black uppercase">Total Geral</span>
+              <span className="text-5xl font-black tracking-tighter italic">R$ {totalPedido.toFixed(2)}</span>
             </div>
           </div>
           <button 
-            onClick={onFinalizar} 
-            disabled={!clienteSelecionado || !enderecoEntrega || carrinho.length === 0 || totalEmPontosNoCarrinho > clienteSelecionado.pontos} 
+            onClick={() => onFinalizar({
+              taxa_entrega: taxaEntrega,
+              valor_recebido: valorRecebido,
+              troco: troco,
+              quilometragem: quilometragem,
+              pagamentos: [{ forma_pagamento: formaPagamento, valor_pago: totalPedido }]
+            })} 
+            disabled={!clienteSelecionado || !enderecoEntrega || carrinho.length === 0 || totalEmPontosNoCarrinho > (clienteSelecionado?.pontos || 0)} 
             className="w-full bg-green-700 text-white py-7 rounded-[2rem] font-black uppercase tracking-widest text-lg shadow-2xl hover:bg-green-600 disabled:opacity-20 active:scale-95 transition-all"
           >
             Finalizar Venda

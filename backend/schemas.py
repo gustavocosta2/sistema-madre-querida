@@ -34,8 +34,23 @@ class Bebida(BaseModel):
     nome: str
     volume: int
     preco: Decimal
+    quantidade: int = 0
     disponivel: Optional[bool] = True
     preco_pontos: Optional[int] = 0
+    class Config: from_attributes = True
+
+class Telefone(BaseModel):
+    id_telefone: int
+    cpf_pessoa: str
+    numero: str
+    e_principal: bool
+    class Config: from_attributes = True
+
+class Promocao(BaseModel):
+    id_promo: int
+    nome: str
+    status: bool
+    valor_desconto: Decimal
     class Config: from_attributes = True
 
 # --- SCHEMAS DE ESCRITA (ENTRADA / UPDATE) ---
@@ -50,6 +65,7 @@ class BebidaUpdate(BaseModel):
     nome: Optional[str] = None
     preco: Optional[float] = None
     volume: Optional[int] = None
+    quantidade: Optional[int] = None
     preco_pontos: Optional[int] = None
 
 class ClienteCompletoCreate(BaseModel):
@@ -61,6 +77,7 @@ class ClienteCompletoCreate(BaseModel):
     bairro: str
     cep: str
     ponto_referencia: Optional[str] = None
+    telefones: Optional[List[str]] = []
 
 class EnderecoCreate(BaseModel):
     cpf_pessoa: str
@@ -79,12 +96,22 @@ class ItemPedidoCreate(BaseModel):
     id_tamanho: Optional[int] = None
     id_borda: Optional[int] = None
     preco: Decimal
+    observacao: Optional[str] = None
+
+class PagamentoCreate(BaseModel):
+    forma_pagamento: str
+    valor_pago: Decimal
 
 class PedidoCreate(BaseModel):
     cpf_cliente: Optional[str] = None
     id_endereco_entrega: Optional[int] = None
     itens: List[ItemPedidoCreate]
     pontos_resgatados: Optional[int] = 0
+    valor_recebido: Optional[Decimal] = None
+    troco: Optional[Decimal] = Decimal('0.00')
+    taxa_entrega: Optional[Decimal] = Decimal('0.00')
+    quilometragem: Optional[Decimal] = Decimal('0.00')
+    pagamentos: Optional[List[PagamentoCreate]] = []
 
 # --- SEGURANÇA ---
 class LoginRequest(BaseModel):

@@ -17,9 +17,10 @@ import { ConfigPizzaModal } from './components/modals/ConfigPizzaModal'
 import { NovoClienteModal } from './components/modals/NovoClienteModal'
 import { NovoSaborModal } from './components/modals/NovoSaborModal'
 import { NovaBebidaModal } from './components/modals/NovaBebidaModal'
+import { NovaPromocaoModal } from './components/modals/NovaPromocaoModal'
 
 function App() {
-  const { user, setUser, loading, refreshAll, refreshOrders } = useMadre();
+  const { user, setUser, loading, refreshAll, refreshOrders, sabores, tamanhos, bordas, precos } = useMadre();
   const [view, setView] = useState<'pdv' | 'cozinha' | 'entregas' | 'gestao' | 'historico'>('pdv')
   
   // PDV Shared State (Apenas o que é efêmero/venda atual)
@@ -33,8 +34,15 @@ function App() {
   const [showNovoCliente, setShowNovoCliente] = useState(false)
   const [showNovoSabor, setShowNovoSabor] = useState(false)
   const [showNovaBebida, setShowNovaBebida] = useState(false)
+  const [showNovaPromocao, setShowNovaPromocao] = useState(false)
 
-  const handleFinalizarPedido = async () => {
+  const handleFinalizarPedido = async (extra: { 
+    valor_recebido?: number, 
+    troco?: number, 
+    taxa_entrega?: number, 
+    quilometragem?: number,
+    pagamentos?: { forma_pagamento: string, valor_pago: number }[]
+  }) => {
     if (!clienteSelecionado || !enderecoEntrega) return;
     try {
       const pontosResgateTotal = carrinho.reduce((acc, item) => acc + (item.pago_com_pontos ? (item.custo_pontos || 0) : 0), 0);
@@ -42,10 +50,19 @@ function App() {
         cpf_cliente: clienteSelecionado.cpf,
         id_endereco_entrega: enderecoEntrega.id_endereco,
         pontos_resgatados: pontosResgateTotal,
+        valor_recebido: extra.valor_recebido,
+        troco: extra.troco,
+        taxa_entrega: extra.taxa_entrega,
+        quilometragem: extra.quilometragem,
+        pagamentos: extra.pagamentos,
         itens: carrinho.map(item => ({
-          tipo: item.tipo, id_produto: item.tipo === 'bebida' ? item.id_original : null,
-          sabores: item.sabores || [], id_tamanho: item.id_tamanho || null,
-          id_borda: item.id_borda || null, preco: item.pago_com_pontos ? 0 : item.preco
+          tipo: item.tipo, 
+          id_produto: item.tipo === 'bebida' ? item.id_original : null,
+          sabores: item.sabores || [], 
+          id_tamanho: item.id_tamanho || null,
+          id_borda: item.id_borda || null, 
+          preco: item.pago_com_pontos ? 0 : item.preco,
+          observacao: item.observacao
         }))
       };
       await api.postPedido(payload);
@@ -77,6 +94,7 @@ function App() {
         <Gestao 
             onOpenNovoSabor={() => setShowNovoSabor(true)} 
             onOpenNovaBebida={() => setShowNovaBebida(true)} 
+            onOpenNovaPromocao={() => setShowNovaPromocao(true)}
         />
       )}
 
@@ -84,6 +102,10 @@ function App() {
       {saborConfigurando && (
         <ConfigPizzaModal 
           saborBase={saborConfigurando}
+          sabores={sabores}
+          tamanhos={tamanhos}
+          bordas={bordas}
+          precos={precos}
           onClose={() => { setSaborConfigurando(null); setCustoPontosModal(null); }}
           onConfirm={(cfg) => {
             setCarrinho([...carrinho, { 
@@ -93,7 +115,8 @@ function App() {
               pago_com_pontos: !!custoPontosModal, custo_pontos: custoPontosModal || 0,
               sabores: cfg.saborExtra ? [cfg.saborBase.id_sabor, cfg.saborExtra.id_sabor] : [cfg.saborBase.id_sabor],
               id_tamanho: cfg.tamanho.id_tamanho, id_borda: cfg.borda.id_borda, 
-              detalhe: `${cfg.tamanho.nome_tamanho}${custoPontosModal ? ' (Resgate)' : ''}`
+              detalhe: `${cfg.tamanho.nome_tamanho}${custoPontosModal ? ' (Resgate)' : ''}`,
+              observacao: cfg.observacao
             }]);
             setSaborConfigurando(null); setCustoPontosModal(null);
           }}
@@ -110,6 +133,7 @@ function App() {
 
       {showNovoSabor && <NovoSaborModal onClose={() => setShowNovoSabor(false)} onSuccess={() => { refreshAll(); setShowNovoSabor(false); }} />}
       {showNovaBebida && <NovaBebidaModal onClose={() => setShowNovaBebida(false)} onSuccess={() => { refreshAll(); setShowNovaBebida(false); }} />}
+      {showNovaPromocao && <NovaPromocaoModal onClose={() => setShowNovaPromocao(false)} onSuccess={() => { refreshAll(); setShowNovaPromocao(false); }} />}
     </Layout>
   )
 }

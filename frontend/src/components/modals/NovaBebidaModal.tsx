@@ -41,18 +41,61 @@ export function NovaBebidaModal({ onClose, onSuccess }: NovaBebidaModalProps) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-400 uppercase ml-4">Preço (R$)</label>
-                <input type="number" value={novaBebida.preco} onChange={e => setNovaBebida({...novaBebida, preco: parseFloat(e.target.value)})} className="w-full bg-gray-50 border-4 border-gray-100 rounded-3xl p-6 font-black text-xl" />
+                <input 
+                    type="number" 
+                    min="0"
+                    value={novaBebida.preco} 
+                    onChange={e => {
+                        const val = parseFloat(e.target.value);
+                        setNovaBebida({...novaBebida, preco: val < 0 ? 0 : val})
+                    }} 
+                    className="w-full bg-gray-50 border-4 border-gray-100 rounded-3xl p-6 font-black text-xl text-green-700" 
+                />
             </div>
             <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-400 uppercase ml-4">Volume (ml)</label>
-                <input type="number" value={novaBebida.volume} onChange={e => setNovaBebida({...novaBebida, volume: parseInt(e.target.value)})} className="w-full bg-gray-50 border-4 border-gray-100 rounded-3xl p-6 font-black text-xl" />
+                <input 
+                    type="number" 
+                    min="1"
+                    value={novaBebida.volume} 
+                    onChange={e => {
+                        const val = parseInt(e.target.value);
+                        setNovaBebida({...novaBebida, volume: val < 1 ? 1 : val})
+                    }} 
+                    className="w-full bg-gray-50 border-4 border-gray-100 rounded-3xl p-6 font-black text-xl" 
+                />
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-gray-400 uppercase ml-4">Custo Resgate (Pontos)</label>
-            <input type="number" value={novaBebida.preco_pontos} onChange={e => setNovaBebida({...novaBebida, preco_pontos: parseInt(e.target.value)})} className="w-full bg-gray-50 border-4 border-gray-100 rounded-3xl p-6 font-black text-xl text-amber-600" />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase ml-4">Estoque Inicial</label>
+                <input 
+                    type="number" 
+                    min="0"
+                    value={novaBebida.quantidade} 
+                    onChange={e => {
+                        const val = parseInt(e.target.value);
+                        setNovaBebida({...novaBebida, quantidade: val < 0 ? 0 : val})
+                    }} 
+                    className="w-full bg-gray-50 border-4 border-gray-100 rounded-3xl p-6 font-black text-xl" 
+                />
+            </div>
+            <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase ml-4">Custo Resgate (Pontos)</label>
+                <input 
+                    type="number" 
+                    min="0"
+                    value={novaBebida.preco_pontos} 
+                    onChange={e => {
+                        const val = parseInt(e.target.value);
+                        setNovaBebida({...novaBebida, preco_pontos: val < 0 ? 0 : val})
+                    }} 
+                    className="w-full bg-gray-50 border-4 border-gray-100 rounded-3xl p-6 font-black text-xl text-amber-600" 
+                />
+            </div>
           </div>
+
         </div>
 
         <div className="flex gap-4">

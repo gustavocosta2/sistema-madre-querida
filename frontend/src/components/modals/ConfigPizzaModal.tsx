@@ -1,6 +1,6 @@
 import { X } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import type { Sabor, Tamanho, Borda, Preco } from '../types';
+import { useState } from 'react';
+import type { Sabor, Tamanho, Borda, Preco } from '../../types';
 
 interface ConfigPizzaModalProps {
   saborBase: Sabor;
@@ -9,13 +9,14 @@ interface ConfigPizzaModalProps {
   bordas: Borda[];
   precos: Preco[];
   onClose: () => void;
-  onConfirm: (config: { saborBase: Sabor, saborExtra: Sabor | null, tamanho: Tamanho, borda: Borda, preco: number }) => void;
+  onConfirm: (config: { saborBase: Sabor, saborExtra: Sabor | null, tamanho: Tamanho, borda: Borda, preco: number, observacao: string }) => void;
 }
 
 export function ConfigPizzaModal({ saborBase, sabores, tamanhos, bordas, precos, onClose, onConfirm }: ConfigPizzaModalProps) {
   const [saborExtra, setSaborExtra] = useState<Sabor | null>(null);
   const [tamanhoEscolhido, setTamanhoEscolhido] = useState<Tamanho>(tamanhos[2] || tamanhos[0]);
   const [bordaEscolhida, setBordaEscolhida] = useState<Borda>(bordas[0]);
+  const [observacao, setObservacao] = useState('');
 
   const calcularPreco = () => {
     const p1 = parseFloat(precos.find(p => p.id_sabor === saborBase.id_sabor && p.id_tamanho === tamanhoEscolhido.id_tamanho)?.preco_base || '0');
@@ -67,9 +68,18 @@ export function ConfigPizzaModal({ saborBase, sabores, tamanhos, bordas, precos,
               ))}
             </div>
           </div>
+          <div className="space-y-4">
+            <label className="text-[10px] font-black uppercase text-gray-500 block text-center">Observações</label>
+            <textarea 
+              value={observacao}
+              onChange={(e) => setObservacao(e.target.value)}
+              placeholder="Ex: Sem cebola, massa bem assada..."
+              className="w-full h-24 p-6 bg-gray-100 border-4 border-gray-200 rounded-[2rem] text-[12px] font-bold focus:border-[#b91c1c] outline-none transition-all resize-none"
+            />
+          </div>
           <div className="flex justify-between items-center pt-10 border-t-8 border-gray-100">
             <div className="text-left"><span className="text-[11px] font-black text-gray-500 uppercase">Subtotal</span><span className="text-5xl font-black text-green-700 italic leading-none">R$ {calcularPreco().toFixed(2)}</span></div>
-            <button onClick={() => onConfirm({ saborBase, saborExtra, tamanho: tamanhoEscolhido, borda: bordaEscolhida, preco: calcularPreco() })} className="bg-green-700 text-white px-16 py-8 rounded-[3rem] font-black uppercase text-lg shadow-2xl active:scale-95">Colocar no Carrinho</button>
+            <button onClick={() => onConfirm({ saborBase, saborExtra, tamanho: tamanhoEscolhido, borda: bordaEscolhida, preco: calcularPreco(), observacao })} className="bg-green-700 text-white px-16 py-8 rounded-[3rem] font-black uppercase text-lg shadow-2xl active:scale-95">Colocar no Carrinho</button>
           </div>
         </div>
       </div>
