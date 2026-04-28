@@ -17,6 +17,8 @@ interface MadreContextType {
   setUser: (user: { username: string; role: string } | null) => void;
   refreshAll: () => Promise<void>;
   refreshOrders: () => Promise<void>;
+  audioEnabled: boolean;
+  setAudioEnabled: (enabled: boolean) => void;
 }
 
 const MadreContext = createContext<MadreContextType | undefined>(undefined);
@@ -37,6 +39,14 @@ export function MadreProvider({ children }: { children: React.ReactNode }) {
   const [promocoes, setPromocoes] = useState<Promocao[]>([]);
   const [pedidosAtivos, setPedidosAtivos] = useState<PedidoAtivo[]>([]);
   const [historicoPedidos, setHistoricoPedidos] = useState<any[]>([]);
+  const [audioEnabled, setAudioEnabled] = useState(false);
+  const [lastMaxId, setLastMaxId] = useState(0);
+
+  const tocarAlerta = useCallback(() => {
+    if (!audioEnabled) return;
+    const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
+    audio.play().catch(e => console.error("Erro ao tocar som:", e));
+  }, [audioEnabled]);
 
   const refreshAll = useCallback(async () => {
     try {
@@ -61,12 +71,25 @@ export function MadreProvider({ children }: { children: React.ReactNode }) {
         api.getPedidosAtivos(),
         api.getHistoricoPedidos()
       ]);
-      setPedidosAtivos(ativos.data || []);
+      
+      const novosAtivos = ativos.data || [];
+      
+      // Lógica de Alerta Sonoro: Verifica se entrou um ID novo
+      if (novosAtivos.length > 0) {
+        const currentMaxId = Math.max(...novosAtivos.map((p: any) => p.id_pedido));
+        if (lastMaxId > 0 && currentMaxId > lastMaxId) {
+          console.log("🔔 NOVO PEDIDO DETECTADO! Tocando alerta...");
+          tocarAlerta();
+        }
+        setLastMaxId(currentMaxId);
+      }
+
+      setPedidosAtivos(novosAtivos);
       setHistoricoPedidos(hist.data || []);
     } catch (e) {
       console.error("Erro ao atualizar pedidos", e);
     }
-  }, [user]);
+  }, [user, lastMaxId, tocarAlerta]);
 
   useEffect(() => {
     refreshAll();
@@ -82,7 +105,8 @@ export function MadreProvider({ children }: { children: React.ReactNode }) {
   return (
     <MadreContext.Provider value={{
       loading, sabores, tamanhos, bordas, precos, motoboys, bebidas, promocoes,
-      pedidosAtivos, historicoPedidos, user, setUser, refreshAll, refreshOrders
+      pedidosAtivos, historicoPedidos, user, setUser, refreshAll, refreshOrders,
+      audioEnabled, setAudioEnabled
     }}>
       {children}
     </MadreContext.Provider>

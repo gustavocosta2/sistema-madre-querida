@@ -27,7 +27,6 @@ export interface Preco {
 export interface Bebida { 
     id_produto: number; 
     nome: string; 
-    volume: number; 
     preco: string; 
     quantidade: number;
     disponivel?: boolean; 

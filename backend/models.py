@@ -83,7 +83,6 @@ class Produto(Base):
 class Bebida(Base):
     __tablename__ = "bebidas"
     id_bebida = Column(Integer, ForeignKey("produtos.id_produto"), primary_key=True)
-    volume_ml = Column(Integer, nullable=False)
     preco_venda = Column(Numeric(10, 2), nullable=False)
     quantidade = Column(Integer, default=0, nullable=False)
     

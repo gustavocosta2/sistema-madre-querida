@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const baseUrl = 'http://localhost:8000';
+// DICA: Troque 'localhost' pelo IP do seu computador (ex: 192.168.1.5) 
+// para conseguir acessar do celular na mesma rede Wi-Fi.
+const baseUrl = `http://${window.location.hostname}:8000`;
 
 export const api = {
   // --- SABORES ---
@@ -15,6 +17,7 @@ export const api = {
   // --- PEDIDOS ---
   getPedidosAtivos: () => axios.get(`${baseUrl}/pedidos/ativos`),
   getHistoricoPedidos: () => axios.get(`${baseUrl}/pedidos/historico_dia`),
+  getPedidoDetalhado: (id: number) => axios.get(`${baseUrl}/pedidos/${id}`),
   patchStatusPedido: (id: number, status: string) => 
     axios.patch(`${baseUrl}/pedidos/${id}/status?novo_status=${status}`),
   patchDespacharPedido: (id: number, cpfMotoboy: string) => 
@@ -24,6 +27,7 @@ export const api = {
   // --- CLIENTES ---
   buscarClientes: (termo: string) => axios.get(`${baseUrl}/clientes/buscar/${termo}`),
   getEnderecosCliente: (cpf: string) => axios.get(`${baseUrl}/clientes/${cpf}/enderecos`),
+  getUltimoPedidoCliente: (cpf: string) => axios.get(`${baseUrl}/clientes/${cpf}/ultimo_pedido`),
   postClienteCompleto: (cliente: any) => axios.post(`${baseUrl}/clientes/completo`, cliente),
   postEndereco: (endereco: any) => axios.post(`${baseUrl}/enderecos`, endereco),
 
@@ -40,5 +44,6 @@ export const api = {
     axios.post(`${baseUrl}/bebidas`, bebida),
   patchBebida: (id: number, bebida: any) => 
     axios.patch(`${baseUrl}/bebidas/${id}`, bebida),
+  getDashboard: () => axios.get(`${baseUrl}/gestao/dashboard`),
   login: (credentials: any) => axios.post(`${baseUrl}/login`, credentials),
 };

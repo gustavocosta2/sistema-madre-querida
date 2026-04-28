@@ -11,7 +11,7 @@ export function NovaBebidaModal({ onClose, onSuccess }: NovaBebidaModalProps) {
   const [novaBebida, setNovaBebida] = useState({ 
     nome: '', 
     preco: 0, 
-    volume: 350, 
+    quantidade: 0,
     preco_pontos: 100 
   });
 
@@ -38,7 +38,7 @@ export function NovaBebidaModal({ onClose, onSuccess }: NovaBebidaModalProps) {
             <input value={novaBebida.nome} onChange={e => setNovaBebida({...novaBebida, nome: e.target.value})} className="w-full bg-gray-50 border-4 border-gray-100 rounded-3xl p-6 font-black text-xl" placeholder="Ex: Coca-Cola 2L" />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-400 uppercase ml-4">Preço (R$)</label>
                 <input 
@@ -50,19 +50,6 @@ export function NovaBebidaModal({ onClose, onSuccess }: NovaBebidaModalProps) {
                         setNovaBebida({...novaBebida, preco: val < 0 ? 0 : val})
                     }} 
                     className="w-full bg-gray-50 border-4 border-gray-100 rounded-3xl p-6 font-black text-xl text-green-700" 
-                />
-            </div>
-            <div className="space-y-1">
-                <label className="text-[10px] font-black text-gray-400 uppercase ml-4">Volume (ml)</label>
-                <input 
-                    type="number" 
-                    min="1"
-                    value={novaBebida.volume} 
-                    onChange={e => {
-                        const val = parseInt(e.target.value);
-                        setNovaBebida({...novaBebida, volume: val < 1 ? 1 : val})
-                    }} 
-                    className="w-full bg-gray-50 border-4 border-gray-100 rounded-3xl p-6 font-black text-xl" 
                 />
             </div>
           </div>

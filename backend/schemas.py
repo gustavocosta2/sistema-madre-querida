@@ -32,7 +32,6 @@ class Precificado(BaseModel):
 class Bebida(BaseModel):
     id_produto: int
     nome: str
-    volume: int
     preco: Decimal
     quantidade: int = 0
     disponivel: Optional[bool] = True
@@ -64,7 +63,6 @@ class SaborUpdate(BaseModel):
 class BebidaUpdate(BaseModel):
     nome: Optional[str] = None
     preco: Optional[float] = None
-    volume: Optional[int] = None
     quantidade: Optional[int] = None
     preco_pontos: Optional[int] = None
 
@@ -107,7 +105,7 @@ class PedidoCreate(BaseModel):
     id_endereco_entrega: Optional[int] = None
     itens: List[ItemPedidoCreate]
     pontos_resgatados: Optional[int] = 0
-    valor_recebido: Optional[Decimal] = None
+    valor_recebido: Optional[Decimal] = Decimal('0.00')
     troco: Optional[Decimal] = Decimal('0.00')
     taxa_entrega: Optional[Decimal] = Decimal('0.00')
     quilometragem: Optional[Decimal] = Decimal('0.00')

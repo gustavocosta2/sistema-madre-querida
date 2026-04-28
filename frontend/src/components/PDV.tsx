@@ -1,4 +1,4 @@
-import { Search, UserPlus, Plus, Coffee, AlertTriangle, ShoppingCart, Info, X, Gift } from 'lucide-react';
+import { Search, UserPlus, Plus, Coffee, AlertTriangle, ShoppingCart, Info, X, Gift, History } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { api } from '../api';
 import { useMadre } from '../context/MadreContext';
@@ -25,6 +25,7 @@ export function PDV({
   const [buscaCliente, setBuscaCliente] = useState('');
   const [sugestoesClientes, setSugestoesClientes] = useState<ClienteBusca[]>([]);
   const [enderecosCliente, setEnderecosCliente] = useState<Endereco[]>([]);
+  const [ultimoPedido, setUltimoPedido] = useState<any>(null);
   const [pdvTab, setPdvTab] = useState<'pizzas' | 'bebidas'>('pizzas');
 
   // Novos campos de fechamento
@@ -35,6 +36,13 @@ export function PDV({
 
   const totalPedido = carrinho.reduce((a, b) => a + b.preco, 0) + taxaEntrega;
   const troco = valorRecebido > totalPedido ? valorRecebido - totalPedido : 0;
+
+  // Atualiza valor recebido automaticamente para meios eletrônicos
+  useEffect(() => {
+    if (formaPagamento !== 'Dinheiro' && totalPedido > 0) {
+      setValorRecebido(totalPedido);
+    }
+  }, [formaPagamento, totalPedido]);
 
   useEffect(() => {
     if (buscaCliente.length > 2) {
@@ -53,6 +61,12 @@ export function PDV({
       const ends = res.data || [];
       setEnderecosCliente(ends);
       setEnderecoEntrega(ends[0] || null);
+      
+      // Busca a inteligência do último pedido
+      api.getUltimoPedidoCliente(c.cpf).then(res => {
+          setUltimoPedido(res.data);
+      }).catch(() => setUltimoPedido(null));
+      
     } catch (e) { console.error(e); }
   };
 
@@ -83,7 +97,7 @@ export function PDV({
                 </div>
                 <div className="bg-green-100 text-green-900 px-4 py-2 rounded-xl font-black text-xs uppercase flex items-center gap-2 border-2 border-green-200 shadow-sm">
                   {clienteSelecionado.nome}
-                  <button onClick={() => { setClienteSelecionado(null); setEnderecoEntrega(null); }} className="hover:scale-125 transition-transform"><X size={14} /></button>
+                  <button onClick={() => { setClienteSelecionado(null); setEnderecoEntrega(null); setUltimoPedido(null); }} className="hover:scale-125 transition-transform"><X size={14} /></button>
                 </div>
               </div>
             )}
@@ -139,23 +153,44 @@ export function PDV({
             )) : <div className="col-span-full py-20 text-center"><AlertTriangle size={48} className="mx-auto text-gray-300 mb-4" /><p className="font-black text-gray-400 uppercase italic">Nenhuma pizza encontrada.</p></div>
           ) : (
             bebidas.map(b => (
-              <div key={b.id_produto} className="bg-white p-8 rounded-[2.5rem] border-2 border-gray-200 hover:border-emerald-600 shadow-md transition-all text-left group flex flex-col justify-between">
-                <div>
-                  <h3 className="text-2xl font-black uppercase text-gray-900 leading-none">{b.nome}</h3>
-                  <p className="text-xs text-gray-600 font-bold uppercase mt-3 mb-8">{b.volume}ml</p>
+              <div key={b.id_produto} className={`relative group bg-white rounded-[2.5rem] border-4 transition-all duration-300 overflow-hidden shadow-md hover:shadow-2xl ${b.quantidade <= 0 ? 'opacity-60 grayscale cursor-not-allowed border-gray-100' : 'hover:border-emerald-500 border-gray-100'}`}>
+                {/* SELO DE ESTOQUE FLUTUANTE */}
+                <div className={`absolute top-5 right-5 px-3 py-1 rounded-full font-black text-[9px] uppercase tracking-tighter shadow-sm z-10 ${b.quantidade > 10 ? 'bg-emerald-100 text-emerald-700' : (b.quantidade > 0 ? 'bg-amber-100 text-amber-700' : 'bg-red-600 text-white')}`}>
+                  {b.quantidade > 0 ? `${b.quantidade} em estoque` : 'Esgotado'}
                 </div>
-                <div className="flex flex-col gap-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-2xl font-black text-emerald-600 italic">R$ {parseFloat(b.preco).toFixed(2)}</span>
-                    <button onClick={() => setCarrinho([...carrinho, { id: Math.random().toString(36).slice(2, 11), id_original: b.id_produto, tipo: 'bebida', nome: b.nome, preco: parseFloat(b.preco), detalhe: `${b.volume}ml` }])} className="bg-gray-100 p-3 rounded-2xl text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all"><Coffee size={24} /></button>
+
+                {/* CONTEÚDO DO CARD */}
+                <div className="p-8 space-y-6">
+                  <div className="bg-emerald-50 w-16 h-16 rounded-2xl flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform duration-500">
+                    <Coffee size={32} strokeWidth={2.5} />
                   </div>
-                  {b.preco_pontos && (
+                  
+                  <div>
+                    <h3 className="text-2xl font-black uppercase text-gray-900 leading-none tracking-tighter">{b.nome}</h3>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase mt-2">Bebida Gelada</p>
+                  </div>
+
+                  <div className="pt-4 border-t-2 border-gray-50 flex justify-between items-center">
+                    <div>
+                        <p className="text-[9px] font-black text-gray-400 uppercase">Preço Venda</p>
+                        <p className="text-3xl font-black text-emerald-600 italic">R$ {parseFloat(b.preco).toFixed(2)}</p>
+                    </div>
                     <button 
-                      onClick={() => setCarrinho([...carrinho, { id: Math.random().toString(36).slice(2, 11), id_original: b.id_produto, tipo: 'bebida', nome: `🎁 ${b.nome}`, preco: 0, pago_com_pontos: true, custo_pontos: b.preco_pontos, detalhe: `${b.volume}ml (Resgate)` }])}
-                      disabled={!clienteSelecionado || (clienteSelecionado.pontos - totalEmPontosNoCarrinho) < b.preco_pontos}
-                      className="w-full py-2 bg-amber-50 border-2 border-amber-200 rounded-xl flex items-center justify-center gap-2 text-[9px] font-black uppercase text-amber-700 hover:bg-amber-100 disabled:opacity-30 disabled:grayscale transition-all"
+                      disabled={b.quantidade <= 0}
+                      onClick={() => setCarrinho([...carrinho, { id: Math.random().toString(36).slice(2, 11), id_original: b.id_produto, tipo: 'bebida', nome: b.nome, preco: parseFloat(b.preco), detalhe: 'Bebida' }])} 
+                      className="bg-emerald-600 text-white p-5 rounded-2xl shadow-lg hover:bg-emerald-700 active:scale-90 transition-all disabled:opacity-0"
                     >
-                      <Gift size={14}/> Trocar ({b.preco_pontos} Pts)
+                      <Plus size={24} strokeWidth={4} />
+                    </button>
+                  </div>
+
+                  {b.preco_pontos > 0 && (
+                    <button 
+                      onClick={() => setCarrinho([...carrinho, { id: Math.random().toString(36).slice(2, 11), id_original: b.id_produto, tipo: 'bebida', nome: `🎁 ${b.nome}`, preco: 0, pago_com_pontos: true, custo_pontos: b.preco_pontos, detalhe: 'Resgate' }])}
+                      disabled={!clienteSelecionado || (clienteSelecionado.pontos - totalEmPontosNoCarrinho) < b.preco_pontos}
+                      className="w-full py-3 bg-amber-50 border-2 border-amber-100 rounded-2xl flex items-center justify-center gap-2 text-[10px] font-black uppercase text-amber-700 hover:bg-amber-100 disabled:opacity-30 disabled:grayscale transition-all"
+                    >
+                      <Gift size={16}/> Resgatar com {b.preco_pontos} Pts
                     </button>
                   )}
                 </div>
@@ -179,6 +214,16 @@ export function PDV({
                 <button onClick={onOpenNovoCliente} className="text-[9px] font-black uppercase bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700">+ Novo Endereço</button>
               </div>
               <p className="font-black text-lg uppercase text-gray-900 leading-none mb-4">{clienteSelecionado.nome}</p>
+
+              {/* INTELIGÊNCIA DE CLIENTE */}
+              {ultimoPedido && (
+                 <div className="mb-4 bg-amber-50 border-2 border-amber-100 p-4 rounded-2xl shadow-sm">
+                   <p className="text-[9px] font-black uppercase text-amber-600 flex items-center gap-1 mb-2 tracking-widest"><History size={12}/> Inteligência de Venda</p>
+                   <p className="text-[11px] text-amber-950 leading-tight">Última compra em <span className="font-bold">{new Date(ultimoPedido.data).toLocaleDateString()}</span>:</p>
+                   <p className="text-[11px] font-black text-amber-900 mt-1 italic">"{ultimoPedido.resumo_itens}"</p>
+                 </div>
+              )}
+
               <div className="space-y-3">
                 {enderecosCliente.map(e => (
                   <button key={e.id_endereco} onClick={() => setEnderecoEntrega(e)} className={`w-full text-left p-5 rounded-2xl border-4 transition-all ${enderecoEntrega?.id_endereco === e.id_endereco ? 'border-green-600 bg-green-600 text-white shadow-xl scale-[1.03]' : 'bg-gray-100 border-gray-200 text-gray-900'}`}>
@@ -273,17 +318,29 @@ export function PDV({
             </div>
           </div>
           <button 
-            onClick={() => onFinalizar({
-              taxa_entrega: taxaEntrega,
-              valor_recebido: valorRecebido,
-              troco: troco,
-              quilometragem: quilometragem,
-              pagamentos: [{ forma_pagamento: formaPagamento, valor_pago: totalPedido }]
-            })} 
-            disabled={!clienteSelecionado || !enderecoEntrega || carrinho.length === 0 || totalEmPontosNoCarrinho > (clienteSelecionado?.pontos || 0)} 
+            onClick={() => {
+              const payloadExtra = {
+                taxa_entrega: Number(taxaEntrega) || 0,
+                valor_recebido: Number(valorRecebido) || 0,
+                troco: Number(troco) || 0,
+                quilometragem: Number(quilometragem) || 0,
+                pagamentos: [{ forma_pagamento: formaPagamento, valor_pago: totalPedido }]
+              };
+              console.log("CARRINHO DEBUG:", payloadExtra);
+              onFinalizar(payloadExtra);
+            }} 
+            disabled={
+              !clienteSelecionado || 
+              !enderecoEntrega || 
+              carrinho.length === 0 || 
+              totalEmPontosNoCarrinho > (clienteSelecionado?.pontos || 0) ||
+              (formaPagamento === 'Dinheiro' && valorRecebido < totalPedido)
+            } 
             className="w-full bg-green-700 text-white py-7 rounded-[2rem] font-black uppercase tracking-widest text-lg shadow-2xl hover:bg-green-600 disabled:opacity-20 active:scale-95 transition-all"
           >
-            Finalizar Venda
+            {formaPagamento === 'Dinheiro' && valorRecebido < totalPedido && valorRecebido > 0 
+              ? "Valor Insuficiente" 
+              : "Finalizar Venda"}
           </button>
         </div>
       </div>

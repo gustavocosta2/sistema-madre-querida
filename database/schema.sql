@@ -108,7 +108,6 @@ CREATE TABLE produtos (
 
 CREATE TABLE bebidas (
     id_bebida INT PRIMARY KEY REFERENCES produtos(id_produto) ON DELETE CASCADE,
-    volume_ml INT NOT NULL CHECK (volume_ml > 0),
     preco_venda NUMERIC(10,2) NOT NULL CHECK (preco_venda >= 0),
     quantidade INT NOT NULL DEFAULT 0 CHECK (quantidade >= 0)
 );

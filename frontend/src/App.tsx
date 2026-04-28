@@ -67,8 +67,13 @@ function App() {
       };
       await api.postPedido(payload);
       setCarrinho([]); setClienteSelecionado(null); setEnderecoEntrega(null); 
-      refreshOrders(); alert("Pedido enviado com sucesso!");
-    } catch { alert("Erro ao salvar pedido."); }
+      refreshOrders(); 
+      refreshAll(); // Atualiza estoque de bebidas, sabores, etc.
+      alert("Pedido enviado com sucesso!");
+    } catch (error: any) { 
+      const msg = error.response?.data?.detail || "Erro desconhecido ao salvar pedido.";
+      alert(`⚠️ Erro no Pedido: ${msg}`); 
+    }
   }
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-[#fcfaf7] text-[#b91c1c] font-black text-2xl animate-pulse uppercase italic tracking-tighter">Carregando Madre Querida...</div>
