@@ -61,7 +61,6 @@ export interface ItemCarrinho {
     detalhe?: string; // Mapeado para 'observacao' no banco
     observacao?: string;
 }
-
 export interface Motoboy { 
     cpf: string; 
     nome: string; 
@@ -69,11 +68,23 @@ export interface Motoboy {
     vinculo: string; 
 }
 
+export interface Funcionario {
+    cpf: string;
+    nome: string;
+    cargo: string;
+    salario: number;
+    ativo: bool;
+    placa_veiculo?: string;
+}
+
 export interface ClienteBusca { 
+...
     cpf: string; 
     nome: string; 
     pontos: number; 
     telefones?: string[];
+    data_nascimento?: string | null;
+    observacao?: string | null;
 }
 
 export interface Endereco { 

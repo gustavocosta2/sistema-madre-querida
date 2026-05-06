@@ -1,92 +1,95 @@
-# Documentação Técnica: Madre Querida
+# Documentação Técnica: Madre Querida (Production-Ready)
 
-Este documento descreve a arquitetura, as regras de negócio e os procedimentos de manutenção do sistema de gestão da Pizzaria Madre Querida.
+Este documento descreve a arquitetura, as regras de negócio e os procedimentos de manutenção do sistema de gestão da Pizzaria Madre Querida. O sistema foi projetado para ser modular, escalável e seguro, atendendo às necessidades de uma operação profissional de gastronomia artesanal.
 
 ---
 
 ## 1. Arquitetura do Sistema
 
-O sistema utiliza uma arquitetura Client-Server moderna, separando a interface do usuário da lógica de processamento de dados.
+O sistema utiliza uma arquitetura Client-Server modularizada, otimizada para desenvolvimento e implantação via containers.
 
--   **Backend:** API RESTful construída com FastAPI (Python 3.10+).
-    -   **ORM:** SQLAlchemy para abstração do banco de dados.
-    -   **Segurança:** Autenticação baseada em Hash de senha (BCrypt) e tokens estruturados.
--   **Frontend:** Aplicação SPA construída com React 19 e TypeScript.
-    -   **Build Tool:** Vite 8.
-    -   **Estilização:** Tailwind CSS 4.
--   **Banco de Dados:** PostgreSQL (Relacional).
-
----
-
-## 2. Modelo de Dados (Expandido)
-
-O banco de dados é dividido em módulos lógicos para facilitar a manutenção.
-
-### Fidelidade e CRM
--   **Pessoas:** Tabela centralizadora de dados (CPF, Nome) para clientes e funcionários.
--   **Endereços e Telefones:** Suporte a múltiplos contatos e endereços por pessoa, com sinalização de endereço principal.
--   **Clientes:** Saldo acumulado (R$ 1,00 gasto = 1 ponto ganho). Itens possuem `preco_pontos` para resgate.
-
-### Logística e Operacional
--   **Funcionários e Motoboys:** Gestão de equipe e entregadores (Placa, Vínculo).
--   **Pedidos:** Controle de status (`Recebido`, `Em Preparo`, `Pronto`, `Despachado`, `Entregue`, `Cancelado`).
--   **Itens de Pedido:** Estrutura complexa para pizzas, permitindo múltiplos sabores (frações), tamanhos e bordas.
-
-### Precificação e Promoções
--   `precificado`: Matriz de preços cruzando `id_sabor` x `id_tamanho`.
--   `promocoes`: Sistema de descontos aplicáveis a produtos, sabores ou tamanhos específicos.
+-   **Backend:** API RESTful modular construída com **FastAPI (Python 3.11+)**.
+    -   **Estrutura:** Decomposição em `APIRouters` especializados (Auth, Pedidos, Financeiro, RH, etc).
+    -   **ORM:** SQLAlchemy 2.0 (Estilo Declarativo Moderno).
+    -   **Segurança:** Autenticação via **JWT (JSON Web Tokens)** com RBAC (*Role-Based Access Control*) diferenciando Administradores de Funcionários.
+-   **Frontend:** Aplicação SPA construída com **React 19** e **TypeScript**.
+    -   **Gerenciamento de Estado:** React Context API (MadreContext) para dados globais.
+    -   **Modularidade:** Decomposição em subcomponentes atômicos para facilidade de manutenção.
+    -   **UI/UX:** Estilização com **Tailwind CSS 4** seguindo o padrão *Enterprise Polish* (ergonomia visual e sombras profundas).
+-   **Infraestrutura:** Totalmente conteinerizado com **Docker** e **Docker Compose**, garantindo paridade entre ambientes de desenvolvimento e produção.
 
 ---
 
-## 3. Regras de Negócio Avançadas
+## 2. Funcionalidades Principais
 
-### Fluxo de Pedido e Entrega
-1.  **Origem:** Pedidos podem ser `Balcão` ou `Delivery`.
-2.  **Logística:** Pedidos de Delivery exigem um `id_motoboy` para serem despachados. O sistema registra a taxa de entrega e quilometragem.
-3.  **Status:** A transição de status é registrada em `historico_status_pedido` para fins de auditoria e tempos de preparo.
+### Inteligência de CRM & Fidelidade
+-   **Perfil do Cliente:** Histórico de preferências e observações personalizadas (ex: "Massa bem assada", "Sem cebola").
+-   **Alerta de Aniversariante:** Identificação visual automática no PDV para clientes que fazem aniversário no mês.
+-   **Gamificação:** Sistema de pontos acumulativos (R$ 10,00 = 1 ponto) com catálogo de resgate direto no carrinho.
 
-### Sistema de Fidelidade (Ganho e Resgate)
-1.  **Ganho de Pontos:** A cada R$ 1,00 efetivamente pago no pedido, o cliente recebe 1 ponto em seu saldo.
-2.  **Resgate de Produtos:** Itens resgatados entram no pedido com `preco = 0.00` e o custo em pontos é debitado do saldo do cliente.
+### Gestão Operacional & Logística
+-   **PDV Avançado:** Busca ultra-rápida de clientes, gestão de múltiplos endereços e cálculo automático de troco.
+-   **Cozinha Inteligente:** Dashboard de produção com visualização de comandas, ingredientes e alertas de tempo de espera.
+-   **Logística de Entregas:** Controle de despacho por motoboy e acompanhamento de pedidos em rota.
+-   **Impressão Térmica:** Sistema *Print Ready* que gera cupons de produção e entrega formatados para impressoras de 80mm.
 
-### Precificação por Tamanho
-Ao montar uma pizza de múltiplos sabores, o sistema aplica o **Maior Preço** entre os sabores selecionados, somando o adicional da borda escolhida.
-
----
-
-## 4. Interface e Módulos Operacionais
-
-O frontend é dividido em visões especializadas:
-
--   **PDV (Ponto de Venda):** Registro rápido de pedidos, busca de clientes por CPF/Nome e gestão de carrinho.
--   **Cozinha:** Dashboard para visualização de pedidos pendentes e atualização de status para preparo.
--   **Entregas:** Gestão de despacho para motoboys e controle de pedidos em rota.
--   **Gestão (Admin):**
-    -   **Dashboard:** Métricas de vendas e performance.
-    -   **Cardápio:** Controle total sobre sabores, bebidas, preços e visibilidade.
-    -   **Promoções:** Criação e ativação de regras de desconto.
+### Controle Financeiro & RH
+-   **Gestão de Equipe (RH):** Cadastro completo de colaboradores, cargos, salários e controle de status (Ativo/Inativo).
+-   **Fechamento de Caixa:** Controle rigoroso de abertura, movimentações manuais (Sangria/Suprimento) e conferência de valores.
+-   **Acerto de Motoboys:** Relatório automático de entregas e taxas devidas por entregador ao final do turno.
 
 ---
 
-## 5. Manutenção e Instalação
+## 3. Segurança e Acesso
 
-### Configuração de Ambiente
--   **Backend:** Instalar dependências via `pip install -r requirements.txt`. Configurar `.env` com a URL do PostgreSQL.
--   **Frontend:** Executar `npm install` e `npm run dev`.
-
-### Scripts de Banco de Dados
-A pasta `database/` contém scripts essenciais:
--   `schema.sql`: Estrutura completa.
--   `seed.sql`: Dados iniciais de tamanhos e bordas.
--   `fix_precos.sql`: Ajustes finos na matriz de precificação.
+O sistema implementa camadas de proteção padrão de mercado:
+-   **Autenticação JWT:** Tokens expiram em 8 horas, exigindo novo login.
+-   **Interceptadores de API:** O frontend gerencia automaticamente a injeção de tokens e o redirecionamento em caso de expiração.
+-   **RBAC (Níveis de Acesso):**
+    -   **Administrador:** Acesso total (Financeiro, RH, Configuração de Preços, BI).
+    -   **Funcionário:** Acesso operacional (PDV, Cozinha, Entregas, Histórico).
 
 ---
 
-## 6. Guia de Verificação (Testes)
+## 4. Instalação e Execução (Simplificada)
 
-1.  **Fluxo de Delivery:** Crie um pedido para um cliente existente, selecione um endereço e despache-o selecionando um motoboy disponível.
-2.  **Venda com Resgate:** Adicione uma pizza paga e uma bebida via resgate. Verifique se o total reflete apenas a pizza.
-3.  **Cozinha:** Verifique se o pedido aparece instantaneamente na tela da cozinha após ser finalizado no PDV.
+A forma recomendada de rodar o sistema é através do **Docker**. 
+
+### Pré-requisitos
+-   **Docker** e **Docker Compose** instalados.
+
+### Passo a Passo
+1.  **Clone o repositório:**
+    ```bash
+    git clone https://github.com/seu-usuario/sistema-gestao-madre-querida.git
+    cd sistema-gestao-madre-querida
+    ```
+
+2.  **Suba o sistema:**
+    ```bash
+    docker-compose up --build
+    ```
+
+3.  **Acesse o sistema:**
+    -   **Frontend:** [http://localhost:5173](http://localhost:5173)
+    -   **Backend (Swagger):** [http://localhost:8000/docs](http://localhost:8000/docs)
+
+4.  **Acessos Padrão (Seed):**
+    -   **Admin:** usuário `admin` / senha `admin123`
+    -   **Equipe:** usuário `equipe` / senha `equipe123`
 
 ---
-*Documentação atualizada em: 29 de Abril de 2026*
+
+## 5. Estrutura do Projeto
+
+```text
+/
+├── backend/            # API FastAPI (Modularizada em /routers)
+├── frontend/           # Interface React + TypeScript
+├── database/           # Scripts SQL de Schema e Dados Iniciais
+├── docker-compose.yml  # Orquestração do ambiente
+└── README.md           # Este guia
+```
+
+---
+*Documentação atualizada em: 05 de Maio de 2026*

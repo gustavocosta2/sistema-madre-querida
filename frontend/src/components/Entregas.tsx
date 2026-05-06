@@ -1,10 +1,13 @@
-import { Truck, MapPin, Phone, Printer, CheckCircle, Package } from 'lucide-react';
+import { Truck, MapPin, Phone, Printer, CheckCircle, Package, Clock, X } from 'lucide-react';
 import { useMadre } from '../context/MadreContext';
 import { api } from '../api';
+import { useState } from 'react';
 
 export function Entregas() {
-  const { pedidosAtivos, motoboys, refreshOrders, refreshAll } = useMadre();
+  const { pedidosAtivos, motoboys, refreshOrders, refreshAll, triggerPrint } = useMadre();
   const pedidosLogistica = pedidosAtivos.filter(p => ['Aguardando Entrega', 'Em Rota'].includes(p.status));
+  const [showAcerto, setShowAcerto] = useState(false);
+  const [dadosAcerto, setDadosAcerto] = useState<any[]>([]);
 
   const despachar = (id: number) => {
     const selectMoto = document.getElementById(`select-moto-${id}`) as HTMLSelectElement;
@@ -18,8 +21,18 @@ export function Entregas() {
     }
   };
 
-  const handleImprimirComprovante = (id: number) => {
-    alert(`Imprimindo via do Motoboy para o pedido #${id}...`);
+  const handleImprimirComprovante = (pedido: any) => {
+    triggerPrint('entrega', pedido);
+  };
+
+  const handleVerAcerto = async () => {
+    try {
+      const res = await api.getAcertoMotoboys();
+      setDadosAcerto(res.data);
+      setShowAcerto(true);
+    } catch {
+      alert("Erro ao buscar dados de acerto.");
+    }
   };
 
   const handleCancelar = (id: number) => {
@@ -42,6 +55,12 @@ export function Entregas() {
             <p className="text-[11px] font-black uppercase tracking-widest text-gray-500 mt-2">Centro de Distribuição</p>
           </div>
           <div className="flex gap-4">
+             <button 
+                onClick={handleVerAcerto}
+                className="bg-gray-900 text-white px-8 py-3 rounded-2xl border-4 border-black shadow-lg font-black uppercase text-[10px] hover:bg-black transition-all flex items-center gap-2"
+             >
+                <Clock size={20} /> Acerto de Motoboys
+             </button>
              <div className="bg-white px-6 py-3 rounded-2xl border-4 border-gray-100 shadow-sm text-center">
                  <p className="text-[10px] font-black uppercase text-gray-400">Pacotes Hoje</p>
                  <p className="text-2xl font-black text-gray-900 leading-none">{pedidosLogistica.length}</p>
@@ -65,7 +84,7 @@ export function Entregas() {
                       <p className="text-[9px] font-black uppercase tracking-widest mt-1 opacity-80">{p.status}</p>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => handleImprimirComprovante(p.id_pedido)} className={`p-3 rounded-xl transition-all ${p.status === 'Aguardando Entrega' ? 'bg-white text-gray-400 hover:text-gray-900 border-2' : 'bg-blue-700 text-white hover:bg-blue-800'}`}>
+                    <button onClick={() => handleImprimirComprovante(p)} className={`p-3 rounded-xl transition-all ${p.status === 'Aguardando Entrega' ? 'bg-white text-gray-400 hover:text-gray-900 border-2' : 'bg-blue-700 text-white hover:bg-blue-800'}`}>
                         <Printer size={20} />
                     </button>
                     <button onClick={() => handleCancelar(p.id_pedido)} className={`p-3 rounded-xl transition-all ${p.status === 'Aguardando Entrega' ? 'bg-white text-red-500 hover:bg-red-50 border-2' : 'bg-blue-700 text-white hover:bg-red-600'}`}>
@@ -130,6 +149,58 @@ export function Entregas() {
           </div>
         )}
       </div>
+
+      {/* MODAL DE ACERTO DE MOTOBOYS */}
+      {showAcerto && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-6 z-[100]">
+          <div className="bg-white w-full max-w-4xl rounded-[4rem] shadow-2xl overflow-hidden border-8 border-gray-100">
+             <div className="bg-gray-900 p-12 text-white flex justify-between items-center">
+                <div>
+                   <h2 className="text-4xl font-black uppercase italic leading-none flex items-center gap-4">
+                      <Clock size={40} className="text-amber-500"/> Acerto Financeiro
+                   </h2>
+                   <p className="text-xs font-black uppercase tracking-widest text-gray-400 mt-4 italic">Conferência de taxas e entregas de hoje</p>
+                </div>
+                <button onClick={() => setShowAcerto(false)} className="p-4 bg-white/10 rounded-full hover:bg-white/20"><X size={32}/></button>
+             </div>
+             
+             <div className="p-12 space-y-8 max-h-[60vh] overflow-y-auto">
+                {dadosAcerto.length === 0 ? (
+                    <div className="py-20 text-center opacity-20">
+                        <p className="font-black uppercase italic text-2xl">Nenhuma entrega finalizada hoje.</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {dadosAcerto.map((m: any) => (
+                            <div key={m.cpf} className="bg-gray-50 p-8 rounded-[2.5rem] border-4 border-gray-200 flex flex-col justify-between">
+                                <div>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Entregador</p>
+                                    <h3 className="text-2xl font-black uppercase text-gray-900">{m.nome}</h3>
+                                    <p className="text-xs font-bold text-gray-400">{m.cpf}</p>
+                                </div>
+                                <div className="mt-8 grid grid-cols-2 gap-4">
+                                    <div className="bg-white p-4 rounded-2xl border-2 border-gray-100">
+                                        <p className="text-[10px] font-black text-gray-400 uppercase">Entregas</p>
+                                        <p className="text-xl font-black text-gray-900">{m.entregas}</p>
+                                    </div>
+                                    <div className="bg-green-50 p-4 rounded-2xl border-2 border-green-200">
+                                        <p className="text-[10px] font-black text-green-600 uppercase">Total Taxas</p>
+                                        <p className="text-xl font-black text-green-700">R$ {m.valor_taxas.toFixed(2)}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+             </div>
+             <div className="p-10 bg-gray-50 border-t-4 border-gray-100 flex justify-center">
+                <button onClick={() => setShowAcerto(false)} className="bg-gray-900 text-white px-12 py-5 rounded-[2rem] font-black uppercase text-sm shadow-xl hover:bg-black transition-all">
+                    Fechar Conferência
+                </button>
+             </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

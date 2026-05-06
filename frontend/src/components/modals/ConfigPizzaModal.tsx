@@ -32,19 +32,20 @@ export function ConfigPizzaModal({ saborBase, sabores, tamanhos, bordas, precos,
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-950/90 flex items-center justify-center p-4 z-[100] backdrop-blur-md">
-      <div className="bg-white w-full max-w-2xl max-h-[95vh] flex flex-col overflow-hidden rounded-[3rem] shadow-2xl border-4 border-gray-100">
+    <div className="fixed inset-0 bg-gray-950/95 flex items-center justify-center p-4 z-[100] backdrop-blur-xl">
+      <div className="bg-white w-full max-w-2xl max-h-[95vh] flex flex-col overflow-hidden rounded-3xl shadow-2xl border border-white/20">
         {/* HEADER - FIXO NO TOPO */}
-        <div className="p-8 border-b-2 border-gray-100 text-center relative bg-[#fcfaf7] shrink-0">
-          <button onClick={onClose} className="absolute top-6 right-8 text-gray-400 hover:text-red-600 transition-colors">
-            <X size={32} strokeWidth={3}/>
+        <div className="p-8 border-b border-gray-100 text-center relative bg-gray-50/50 shrink-0">
+          <button onClick={onClose} className="absolute top-6 right-8 text-gray-400 hover:text-red-600 transition-colors p-2 hover:bg-white rounded-full">
+            <X size={24} />
           </button>
-          <span className="text-[10px] font-black uppercase text-red-600 tracking-widest">Personalize sua Pizza</span>
-          <h2 className="text-3xl font-black uppercase italic mt-2 text-gray-950 leading-tight">
+          <span className="text-[10px] font-black uppercase text-red-600 tracking-[0.2em]">Personalização</span>
+          <h2 className="text-3xl font-black uppercase italic mt-2 text-gray-900 leading-tight">
             {saborExtra ? (
-              <div className="flex items-center justify-center gap-2">
-                <span>½ {saborBase.nome_sabor} / ½ {saborExtra.nome_sabor}</span>
-                <button onClick={() => setSaborExtra(null)} className="text-red-600 hover:scale-110"><X size={20}/></button>
+              <div className="flex items-center justify-center gap-3">
+                <span className="bg-gray-900 text-white px-3 py-1 rounded-lg not-italic text-sm font-black mr-2">½</span>
+                {saborBase.nome_sabor} / {saborExtra.nome_sabor}
+                <button onClick={() => setSaborExtra(null)} className="text-red-600 hover:scale-110 p-1.5 bg-red-50 rounded-lg ml-2"><X size={16}/></button>
               </div>
             ) : `Pizza de ${saborBase.nome_sabor}`}
           </h2>
@@ -54,13 +55,13 @@ export function ConfigPizzaModal({ saborBase, sabores, tamanhos, bordas, precos,
         <div className="p-8 space-y-8 overflow-y-auto custom-scrollbar flex-1 bg-white">
           {/* SELEÇÃO DE TAMANHO */}
           <div className="space-y-4">
-            <label className="text-[10px] font-black uppercase text-gray-400 block text-center tracking-widest">Tamanho Disponível</label>
+            <label className="text-[10px] font-bold uppercase text-gray-400 block text-center tracking-[0.1em]">Escolha o Tamanho</label>
             <div className="grid grid-cols-3 gap-3">
               {tamanhos.map(t => (
                 <button 
                   key={t.id_tamanho} 
                   onClick={() => handleSetTamanho(t)} 
-                  className={`py-4 text-[10px] font-black uppercase rounded-2xl border-2 transition-all ${tamanhoEscolhido.id_tamanho === t.id_tamanho ? 'border-[#b91c1c] bg-[#b91c1c] text-white shadow-lg' : 'bg-gray-50 text-gray-400 border-gray-200 hover:border-gray-300'}`}
+                  className={`py-4 text-[10px] font-black uppercase rounded-xl border-2 transition-all ${tamanhoEscolhido.id_tamanho === t.id_tamanho ? 'border-gray-900 bg-gray-900 text-white shadow-lg' : 'bg-white text-gray-400 border-gray-100 hover:border-gray-300'}`}
                 >
                   {t.nome_name || t.nome_tamanho}
                 </button>
@@ -69,63 +70,72 @@ export function ConfigPizzaModal({ saborBase, sabores, tamanhos, bordas, precos,
           </div>
 
           {/* MEIO A MEIO (Condicional) */}
-          {tamanhoEscolhido.qtd_sabor_max > 1 && !saborExtra && (
-            <div className="space-y-4 pt-6 border-t-2 border-gray-50">
-              <label className="text-[10px] font-black uppercase text-gray-400 block text-center tracking-widest">Adicionar Segundo Sabor?</label>
+          {tamanhoEscolhido.qtd_sabor_max > 1 && (
+            <div className="space-y-4 pt-6 border-t border-gray-50">
+              <label className="text-[10px] font-bold uppercase text-gray-400 block text-center tracking-[0.1em]">
+                {saborExtra ? 'Alterar Segundo Sabor' : 'Adicionar Segundo Sabor?'}
+              </label>
               <div className="flex overflow-x-auto gap-2 pb-2 no-scrollbar">
-                {sabores.filter(s => s.id_sabor !== saborBase.id_sabor && s.disponivel).map(s => (
-                  <button 
-                    key={s.id_sabor} 
-                    onClick={() => setSaborExtra(s)} 
-                    className="shrink-0 px-6 py-3 bg-white border-2 border-gray-100 rounded-xl text-[10px] font-black uppercase hover:border-[#b91c1c] hover:bg-red-50 transition-all text-gray-600"
-                  >
-                    +{s.nome_sabor}
-                  </button>
-                ))}
+                {sabores.filter(s => s.id_sabor !== saborBase.id_sabor && s.disponivel).map(s => {
+                  const isSelected = saborExtra?.id_sabor === s.id_sabor;
+                  return (
+                    <button 
+                      key={s.id_sabor} 
+                      onClick={() => setSaborExtra(isSelected ? null : s)} 
+                      className={`shrink-0 px-6 py-3 border-2 rounded-xl text-[10px] font-black uppercase transition-all ${
+                        isSelected 
+                          ? 'border-red-600 bg-red-600 text-white shadow-md' 
+                          : 'bg-white border-gray-100 text-gray-500 hover:border-gray-300'
+                      }`}
+                    >
+                      {isSelected ? `✓ ${s.nome_sabor}` : `+ ${s.nome_sabor}`}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
 
           {/* SELEÇÃO DE BORDA */}
-          <div className="space-y-4 pt-6 border-t-2 border-gray-50">
-            <label className="text-[10px] font-black uppercase text-gray-400 block text-center tracking-widest">Borda Recheada</label>
+          <div className="space-y-4 pt-6 border-t border-gray-50">
+            <label className="text-[10px] font-bold uppercase text-gray-400 block text-center tracking-[0.1em]">Borda Recheada</label>
             <div className="grid grid-cols-2 gap-3">
               {bordas.map(b => (
                 <button 
                   key={b.id_borda} 
                   onClick={() => setBordaEscolhida(b)} 
-                  className={`p-4 text-[10px] font-black uppercase rounded-2xl border-2 flex justify-between items-center transition-all ${bordaEscolhida.id_borda === b.id_borda ? 'border-green-600 bg-green-600 text-white shadow-md' : 'bg-gray-50 text-gray-500 border-gray-100'}`}
+                  className={`p-4 text-[10px] font-black uppercase rounded-xl border-2 flex justify-between items-center transition-all ${bordaEscolhida.id_borda === b.id_borda ? 'border-emerald-600 bg-emerald-600 text-white shadow-md' : 'bg-white text-gray-500 border-gray-100 hover:border-gray-200'}`}
                 >
                   <span>{b.tipo}</span>
-                  <span className={bordaEscolhida.id_borda === b.id_borda ? 'text-white' : 'text-green-600'}>+ R$ {parseFloat(b.preco_adicional).toFixed(2)}</span>
+                  <span className={bordaEscolhida.id_borda === b.id_borda ? 'text-white/80' : 'text-emerald-600'}>+ R$ {parseFloat(b.preco_adicional).toFixed(2)}</span>
                 </button>
               ))}
             </div>
           </div>
 
           {/* OBSERVAÇÕES */}
-          <div className="space-y-3 pt-6 border-t-2 border-gray-50">
-            <label className="text-[10px] font-black uppercase text-gray-400 block text-center tracking-widest">Notas Especiais</label>
+          <div className="space-y-3 pt-6 border-t border-gray-50">
+            <label className="text-[10px] font-bold uppercase text-gray-400 block text-center tracking-[0.1em]">Observações do Item</label>
             <textarea 
               value={observacao}
               onChange={(e) => setObservacao(e.target.value)}
               placeholder="Ex: Sem cebola, massa bem assada..."
-              className="w-full h-20 p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-[11px] font-bold focus:border-[#b91c1c] outline-none transition-all resize-none"
+              className="w-full h-20 p-4 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-medium focus:border-gray-900 outline-none transition-all resize-none placeholder:text-gray-300"
             />
           </div>
         </div>
 
         {/* FOOTER - FIXO NA BASE */}
-        <div className="p-8 bg-[#fcfaf7] border-t-2 border-gray-100 flex justify-between items-center shrink-0">
+        <div className="p-8 bg-gray-50/50 border-t border-gray-100 flex justify-between items-center shrink-0">
           <div className="text-left">
-            <span className="text-[10px] font-black text-gray-400 uppercase block leading-none mb-1">Subtotal</span>
-            <span className="text-4xl font-black text-green-700 italic leading-none">R$ {calcularPreco().toFixed(2)}</span>
+            <span className="text-[10px] font-bold text-gray-400 uppercase block leading-none mb-1">Preço do Item</span>
+            <span className="text-4xl font-black text-gray-900 italic leading-none">R$ {calcularPreco().toFixed(2)}</span>
           </div>
           <button 
             onClick={() => onConfirm({ saborBase, saborExtra, tamanho: tamanhoEscolhido, borda: bordaEscolhida, preco: calcularPreco(), observacao })} 
-            className="bg-green-700 text-white px-10 py-5 rounded-2xl font-black uppercase text-sm shadow-xl hover:bg-green-800 transition-all active:scale-95"
+            className="bg-emerald-700 text-white px-10 py-5 rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg hover:bg-emerald-800 transition-all active:scale-95"
           >
-            Adicionar à Comanda
+            Confirmar e Adicionar
           </button>
         </div>
       </div>

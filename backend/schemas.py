@@ -1,6 +1,7 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
 from decimal import Decimal
+from datetime import datetime, date
 
 # --- SCHEMAS DE LEITURA (SAÍDA) ---
 class Sabor(BaseModel):
@@ -69,6 +70,8 @@ class BebidaUpdate(BaseModel):
 class ClienteCompletoCreate(BaseModel):
     cpf: str
     nome: str
+    data_nascimento: Optional[date] = None
+    observacao: Optional[str] = None
     logradouro: str
     numero: str
     complemento: Optional[str] = None
@@ -115,6 +118,64 @@ class PedidoCreate(BaseModel):
 class LoginRequest(BaseModel):
     username: str
     password: str
+
+# --- MÓDULO FINANCEIRO ---
+class FluxoCaixaBase(BaseModel):
+    id_caixa: int
+    id_pedido: Optional[int] = None
+    tipo_movimentacao: str # "Entrada Venda", "Suprimento", "Sangria", "Acerto Motoboy"
+    forma_pagamento: str
+    valor: Decimal = Field(..., ge=0)
+    descricao: Optional[str] = None
+
+class FluxoCaixa(FluxoCaixaBase):
+    id_movimentacao: int
+    data_hora: datetime
+    class Config: from_attributes = True
+
+class CaixaBase(BaseModel):
+    id_usuario_abertura: int
+    valor_abertura: Decimal = Field(..., ge=0)
+    observacao: Optional[str] = None
+
+class Caixa(CaixaBase):
+    id_caixa: int
+    id_usuario_fechamento: Optional[int] = None
+    data_abertura: datetime
+    data_fechamento: Optional[datetime] = None
+    valor_fechamento_esperado: Decimal
+    valor_fechamento_informado: Optional[Decimal] = None
+    status: str
+    movimentacoes: List[FluxoCaixa] = []
+    class Config: from_attributes = True
+
+class CaixaFechamento(BaseModel):
+    id_usuario_fechamento: int
+    valor_fechamento_informado: Decimal = Field(..., ge=0)
+    observacao: Optional[str] = None
+
+# --- MÓDULO DE RH / EQUIPE ---
+class FuncionarioCreate(BaseModel):
+    cpf: str
+    nome: str
+    cargo: str
+    salario: Decimal = Field(..., ge=0)
+    placa_veiculo: Optional[str] = None # Apenas se for Motoboy
+
+class FuncionarioUpdate(BaseModel):
+    nome: Optional[str] = None
+    cargo: Optional[str] = None
+    salario: Optional[Decimal] = Field(None, ge=0)
+    placa_veiculo: Optional[str] = None
+
+class FuncionarioResponse(BaseModel):
+    cpf: str
+    nome: str
+    cargo: str
+    salario: Decimal
+    ativo: bool
+    placa_veiculo: Optional[str] = None
+    class Config: from_attributes = True
 
 class TokenResponse(BaseModel):
     access_token: str

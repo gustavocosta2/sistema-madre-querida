@@ -1,49 +1,87 @@
 import axios from 'axios';
 
-// DICA: Troque 'localhost' pelo IP do seu computador (ex: 192.168.1.5) 
-// para conseguir acessar do celular na mesma rede Wi-Fi.
 const baseUrl = `http://${window.location.hostname}:8000`;
+
+const instance = axios.create({
+  baseURL: baseUrl,
+});
+
+// Interceptador para adicionar o Token em cada requisição
+instance.interceptors.request.use((config) => {
+  const userStr = localStorage.getItem('madre_user');
+  if (userStr) {
+    const user = JSON.parse(userStr);
+    if (user.access_token) {
+      config.headers.Authorization = `Bearer ${user.access_token}`;
+    }
+  }
+  return config;
+});
+
+// Interceptador para tratar erros globais (Ex: Token expirado)
+instance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('madre_user');
+      window.location.reload(); // Redireciona para o login
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const api = {
   // --- SABORES ---
-  getSabores: () => axios.get(`${baseUrl}/sabores`),
+  getSabores: () => instance.get(`/sabores`),
   patchSabor: (id: number, sabor: any) => 
-    axios.patch(`${baseUrl}/sabores/${id}`, sabor),
+    instance.patch(`/sabores/${id}`, sabor),
   deleteSabor: (id: number) => 
-    axios.delete(`${baseUrl}/sabores/${id}`),
+    instance.delete(`/sabores/${id}`),
   postSabor: (sabor: any) => 
-    axios.post(`${baseUrl}/sabores`, sabor),
+    instance.post(`/sabores`, sabor),
 
   // --- PEDIDOS ---
-  getPedidosAtivos: () => axios.get(`${baseUrl}/pedidos/ativos`),
-  getHistoricoPedidos: () => axios.get(`${baseUrl}/pedidos/historico_dia`),
-  getPedidoDetalhado: (id: number) => axios.get(`${baseUrl}/pedidos/${id}`),
+  getPedidosAtivos: () => instance.get(`/pedidos/ativos`),
+  getHistoricoPedidos: () => instance.get(`/pedidos/historico_dia`),
+  getPedidoDetalhado: (id: number) => instance.get(`/pedidos/${id}`),
   patchStatusPedido: (id: number, status: string) => 
-    axios.patch(`${baseUrl}/pedidos/${id}/status?novo_status=${status}`),
+    instance.patch(`/pedidos/${id}/status?status=${status}`),
   patchDespacharPedido: (id: number, cpfMotoboy: string) => 
-    axios.patch(`${baseUrl}/pedidos/${id}/despachar?cpf_motoboy=${cpfMotoboy}`),
-  postPedido: (payload: any) => axios.post(`${baseUrl}/pedidos`, payload),
+    instance.patch(`/pedidos/${id}/despachar?id_motoboy=${cpfMotoboy}`),
+  postPedido: (payload: any) => instance.post(`/pedidos`, payload),
 
   // --- CLIENTES ---
-  buscarClientes: (termo: string) => axios.get(`${baseUrl}/clientes/buscar/${termo}`),
-  getEnderecosCliente: (cpf: string) => axios.get(`${baseUrl}/clientes/${cpf}/enderecos`),
-  getUltimoPedidoCliente: (cpf: string) => axios.get(`${baseUrl}/clientes/${cpf}/ultimo_pedido`),
-  postClienteCompleto: (cliente: any) => axios.post(`${baseUrl}/clientes/completo`, cliente),
-  postEndereco: (endereco: any) => axios.post(`${baseUrl}/enderecos`, endereco),
+  buscarClientes: (termo: string) => instance.get(`/clientes/buscar/${termo}`),
+  getEnderecosCliente: (cpf: string) => instance.get(`/clientes/${cpf}/enderecos`),
+  getUltimoPedidoCliente: (cpf: string) => instance.get(`/clientes/${cpf}/ultimo_pedido`),
+  postClienteCompleto: (cliente: any) => instance.post(`/clientes/completo`, cliente),
+  postEndereco: (endereco: any) => instance.post(`/enderecos`, endereco),
+  patchClienteCrm: (cpf: string, payload: any) => instance.patch(`/clientes/${cpf}/crm`, payload),
 
   // --- DEMAIS ---
-  getTamanhos: () => axios.get(`${baseUrl}/tamanhos`),
-  getBordas: () => axios.get(`${baseUrl}/bordas`),
-  getPrecos: () => axios.get(`${baseUrl}/precos`),
-  getMotoboys: () => axios.get(`${baseUrl}/motoboys`),
-  getPromocoes: () => axios.get(`${baseUrl}/promocoes`),
-  postPromocao: (payload: any) => axios.post(`${baseUrl}/promocoes`, payload),
-  deletePromocao: (id: number) => axios.delete(`${baseUrl}/promocoes/${id}`),
-  getBebidas: () => axios.get(`${baseUrl}/bebidas`),
+  getTamanhos: () => instance.get(`/tamanhos`),
+  getBordas: () => instance.get(`/bordas`),
+  getPrecos: () => instance.get(`/precos`),
+  getMotoboys: () => instance.get(`/motoboys`),
+  getAcertoMotoboys: () => instance.get(`/gestao/acerto_motoboys`),
+  getPromocoes: () => instance.get(`/promocoes`),
+  postPromocao: (payload: any) => instance.post(`/promocoes`, payload),
+  deletePromocao: (id: number) => instance.delete(`/promocoes/${id}`),
+  getBebidas: () => instance.get(`/bebidas`),
   postBebida: (bebida: any) => 
-    axios.post(`${baseUrl}/bebidas`, bebida),
+    instance.post(`/bebidas`, bebida),
   patchBebida: (id: number, bebida: any) => 
-    axios.patch(`${baseUrl}/bebidas/${id}`, bebida),
-  getDashboard: () => axios.get(`${baseUrl}/gestao/dashboard`),
-  login: (credentials: any) => axios.post(`${baseUrl}/login`, credentials),
+    instance.patch(`/bebidas/${id}`, bebida),
+  getDashboard: () => instance.get(`/gestao/dashboard`),
+  getFuncionarios: () => instance.get(`/gestao/funcionarios`),
+  postFuncionario: (payload: any) => instance.post(`/gestao/funcionarios`, payload),
+  putFuncionario: (cpf: string, payload: any) => instance.put(`/gestao/funcionarios/${cpf}`, payload),
+  patchFuncionarioStatus: (cpf: string) => instance.patch(`/gestao/funcionarios/${cpf}/status`),
+  login: (credentials: any) => instance.post(`/login`, credentials),
+
+  // --- FINANCEIRO ---
+  getCaixaStatus: () => instance.get(`/financeiro/caixa/status`),
+  postAbrirCaixa: (payload: any) => instance.post(`/financeiro/caixa/abrir`, payload),
+  postMovimentacaoCaixa: (mov: any) => instance.post(`/financeiro/caixa/movimentacao`, mov),
+  postFecharCaixa: (payload: any) => instance.post(`/financeiro/caixa/fechar`, payload),
 };

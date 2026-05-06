@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { api } from '../api';
 
 export function Historico() {
-  const { historicoPedidos } = useMadre();
+  const { historicoPedidos, triggerPrint } = useMadre();
   const [detalhe, setDetalhe] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
@@ -138,7 +138,10 @@ export function Historico() {
                 </div>
 
                 <div className="flex gap-4 pt-4">
-                    <button className="flex-1 bg-gray-900 text-white py-5 rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-2 hover:bg-black transition-all">
+                    <button 
+                        onClick={() => triggerPrint('entrega', detalhe)}
+                        className="flex-1 bg-gray-900 text-white py-5 rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-2 hover:bg-black transition-all"
+                    >
                         <Printer size={18}/> Re-imprimir Cupom
                     </button>
                     <button onClick={() => setDetalhe(null)} className="flex-1 bg-gray-100 text-gray-600 py-5 rounded-2xl font-black uppercase text-xs hover:bg-gray-200 transition-all">

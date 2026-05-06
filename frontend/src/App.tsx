@@ -11,6 +11,8 @@ import { Cozinha } from './components/Cozinha'
 import { Entregas } from './components/Entregas'
 import { Gestao } from './components/Gestao'
 import { Historico } from './components/Historico'
+import Financeiro from './components/Financeiro'
+import { PrintTicket } from './components/PrintTicket'
 
 // Modais
 import { ConfigPizzaModal } from './components/modals/ConfigPizzaModal'
@@ -20,9 +22,9 @@ import { NovaBebidaModal } from './components/modals/NovaBebidaModal'
 import { NovaPromocaoModal } from './components/modals/NovaPromocaoModal'
 
 function App() {
-  const { user, setUser, loading, refreshAll, refreshOrders, sabores, tamanhos, bordas, precos } = useMadre();
-  const [view, setView] = useState<'pdv' | 'cozinha' | 'entregas' | 'gestao' | 'historico'>('pdv')
-  
+  const { user, setUser, loading, refreshAll, refreshOrders, sabores, tamanhos, bordas, precos, printTicket } = useMadre();
+  const [view, setView] = useState<'pdv' | 'cozinha' | 'entregas' | 'gestao' | 'historico' | 'financeiro'>('pdv')
+
   // PDV Shared State (Apenas o que é efêmero/venda atual)
   const [carrinho, setCarrinho] = useState<ItemCarrinho[]>([])
   const [clienteSelecionado, setClienteSelecionado] = useState<ClienteBusca | null>(null)
@@ -95,6 +97,7 @@ function App() {
       {view === 'cozinha' && <Cozinha />}
       {view === 'entregas' && <Entregas />}
       {view === 'historico' && <Historico />}
+      {view === 'financeiro' && <Financeiro />}
       {view === 'gestao' && (
         <Gestao 
             onOpenNovoSabor={() => setShowNovoSabor(true)} 
@@ -139,6 +142,9 @@ function App() {
       {showNovoSabor && <NovoSaborModal onClose={() => setShowNovoSabor(false)} onSuccess={() => { refreshAll(); setShowNovoSabor(false); }} />}
       {showNovaBebida && <NovaBebidaModal onClose={() => setShowNovaBebida(false)} onSuccess={() => { refreshAll(); setShowNovaBebida(false); }} />}
       {showNovaPromocao && <NovaPromocaoModal onClose={() => setShowNovaPromocao(false)} onSuccess={() => { refreshAll(); setShowNovaPromocao(false); }} />}
+
+      {/* COMPONENTE DE IMPRESSÃO (Fica oculto até o trigger) */}
+      {printTicket && <PrintTicket type={printTicket.type} order={printTicket.order} />}
     </Layout>
   )
 }

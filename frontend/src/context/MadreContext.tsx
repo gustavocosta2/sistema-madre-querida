@@ -19,6 +19,8 @@ interface MadreContextType {
   refreshOrders: () => Promise<void>;
   audioEnabled: boolean;
   setAudioEnabled: (enabled: boolean) => void;
+  triggerPrint: (type: 'cozinha' | 'entrega', order: any) => void;
+  printTicket: { type: 'cozinha' | 'entrega', order: any } | null;
 }
 
 const MadreContext = createContext<MadreContextType | undefined>(undefined);
@@ -41,6 +43,15 @@ export function MadreProvider({ children }: { children: React.ReactNode }) {
   const [historicoPedidos, setHistoricoPedidos] = useState<any[]>([]);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [lastMaxId, setLastMaxId] = useState(0);
+  const [printTicket, setPrintTicket] = useState<{ type: 'cozinha' | 'entrega', order: any } | null>(null);
+
+  const triggerPrint = (type: 'cozinha' | 'entrega', order: any) => {
+    setPrintTicket({ type, order });
+    setTimeout(() => {
+        window.print();
+        setTimeout(() => setPrintTicket(null), 500);
+    }, 200);
+  };
 
   const tocarAlerta = useCallback(() => {
     if (!audioEnabled) return;
@@ -106,7 +117,7 @@ export function MadreProvider({ children }: { children: React.ReactNode }) {
     <MadreContext.Provider value={{
       loading, sabores, tamanhos, bordas, precos, motoboys, bebidas, promocoes,
       pedidosAtivos, historicoPedidos, user, setUser, refreshAll, refreshOrders,
-      audioEnabled, setAudioEnabled
+      audioEnabled, setAudioEnabled, triggerPrint, printTicket
     }}>
       {children}
     </MadreContext.Provider>

@@ -4,7 +4,7 @@ import { api } from '../api';
 import { useEffect, useState } from 'react';
 
 export function Cozinha() {
-  const { pedidosAtivos, refreshOrders, refreshAll, sabores, audioEnabled, setAudioEnabled } = useMadre();
+  const { pedidosAtivos, refreshOrders, refreshAll, sabores, audioEnabled, setAudioEnabled, triggerPrint } = useMadre();
   const pedidosCozinha = pedidosAtivos.filter(p => ['Recebido', 'Em Preparo'].includes(p.status));
   const [agora, setAgora] = useState(new Date());
 
@@ -38,8 +38,8 @@ export function Cozinha() {
     return sabor?.ingredientes || "";
   };
 
-  const handleImprimirCozinha = (id: number) => {
-    alert(`Enviando comanda #${id} para a impressora térmica da cozinha...`);
+  const handleImprimirCozinha = (pedido: any) => {
+    triggerPrint('cozinha', pedido);
   };
 
   const handleCancelar = (id: number) => {
@@ -80,9 +80,9 @@ export function Cozinha() {
         </div>
 
         {pedidosCozinha.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-32 opacity-30">
+          <div className="flex flex-col items-center justify-center py-32 opacity-20">
             <ChefHat size={120} strokeWidth={1} className="text-gray-400 mb-6" />
-            <p className="text-3xl font-black uppercase italic text-gray-400 tracking-tighter">Cozinha Vazia...</p>
+            <p className="text-2xl font-bold uppercase text-gray-500 tracking-tight">Nenhum pedido em produção</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
@@ -91,65 +91,65 @@ export function Cozinha() {
               const estaAtrasado = tempoEspera > 30;
 
               return (
-                <div key={p.id_pedido} className={`bg-white rounded-[2rem] border-8 overflow-hidden shadow-2xl flex flex-col ${p.status === 'Recebido' ? 'border-gray-200' : 'border-amber-400'} ${estaAtrasado ? 'animate-pulse border-red-600' : ''}`}>
+                <div key={p.id_pedido} className={`bg-white rounded-3xl border-2 overflow-hidden shadow-lg flex flex-col ${p.status === 'Recebido' ? 'border-gray-100' : 'border-amber-200'} ${estaAtrasado ? 'animate-pulse border-red-500' : ''}`}>
                   {/* CABEÇALHO DA COMANDA (Estilo Cupom) */}
-                  <div className={`p-6 border-b-4 border-dashed flex justify-between items-start ${p.status === 'Recebido' ? 'bg-gray-50 border-gray-200 text-gray-900' : 'bg-amber-400 border-amber-500 text-amber-950'}`}>
+                  <div className={`p-5 border-b-2 border-dashed flex justify-between items-start ${p.status === 'Recebido' ? 'bg-gray-50/50 border-gray-100 text-gray-900' : 'bg-amber-50 border-amber-100 text-amber-950'}`}>
                     <div>
-                        <span className="text-4xl font-black italic tracking-tighter">#{p.id_pedido}</span>
-                        <p className="text-[10px] font-black uppercase mt-1 opacity-70 flex items-center gap-1">
+                        <span className="text-3xl font-black italic tracking-tighter">#{p.id_pedido}</span>
+                        <p className="text-[10px] font-bold uppercase mt-1 opacity-60 flex items-center gap-1 tracking-wider">
                             <Clock size={12}/> {new Date(p.data_hora).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            <span className="ml-2">({tempoEspera} min)</span>
+                            <span className="ml-2 font-medium">({tempoEspera} min)</span>
                         </p>
                     </div>
                     <div className="text-right flex flex-col items-end">
-                      <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full ${p.status === 'Recebido' ? 'bg-gray-200 text-gray-600' : 'bg-amber-900 text-amber-100'}`}>
+                      <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-lg ${p.status === 'Recebido' ? 'bg-gray-200 text-gray-600' : 'bg-amber-200 text-amber-800'}`}>
                         {p.status}
                       </span>
                       <div className="flex gap-2 mt-2">
-                        <button onClick={() => handleImprimirCozinha(p.id_pedido)} className="text-current opacity-50 hover:opacity-100"><Printer size={16}/></button>
-                        <button onClick={() => handleCancelar(p.id_pedido)} className="text-red-700 opacity-50 hover:opacity-100 hover:scale-110 transition-all"><AlertTriangle size={16}/></button>
+                        <button onClick={() => handleImprimirCozinha(p)} className="text-current opacity-40 hover:opacity-100 transition-opacity"><Printer size={16}/></button>
+                        <button onClick={() => handleCancelar(p.id_pedido)} className="text-red-700 opacity-40 hover:opacity-100 hover:scale-110 transition-all"><AlertTriangle size={16}/></button>
                       </div>
                     </div>
                   </div>
 
                   {estaAtrasado && (
-                    <div className="bg-red-600 text-white p-2 text-center text-[10px] font-black uppercase tracking-widest flex justify-center items-center gap-2">
-                        <AlertTriangle size={14}/> Pedido Atrasado
+                    <div className="bg-red-500 text-white p-2 text-center text-[10px] font-black uppercase tracking-widest flex justify-center items-center gap-2">
+                        <AlertTriangle size={14}/> Pedido em Atraso
                     </div>
                   )}
 
                   {/* CORPO DA COMANDA */}
-                  <div className="p-6 flex-1 bg-[#fffaeb] space-y-4">
+                  <div className="p-5 flex-1 bg-white space-y-4">
                       {p.itens?.map((i, idx) => (
-                        <div key={idx} className="bg-white p-5 rounded-2xl border-2 border-gray-100 shadow-sm relative">
-                          <span className="absolute -left-3 -top-3 bg-black text-white w-8 h-8 flex items-center justify-center rounded-full font-black text-xs border-4 border-[#fffaeb]">{i.quantidade}x</span>
+                        <div key={idx} className="bg-gray-50/50 p-5 rounded-2xl border border-gray-100 shadow-sm relative">
+                          <span className="absolute -left-3 -top-3 bg-gray-900 text-white w-7 h-7 flex items-center justify-center rounded-full font-black text-[10px] border-4 border-white shadow-sm">{i.quantidade}x</span>
                           
-                          <p className="font-black text-lg uppercase text-gray-900 leading-tight ml-2">
+                          <p className="font-black text-base uppercase text-gray-900 leading-tight ml-1">
                             {i.tipo === 'pizza' ? (i.detalhes_pizza?.sabores.join(' / ')) : i.nome}
                           </p>
 
                           {/* INGREDIENTES DOS SABORES (Dica para o pizzaiolo) */}
                           {i.tipo === 'pizza' && i.detalhes_pizza && (
-                            <div className="mt-2 ml-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                                <p className="text-[9px] font-black text-gray-400 uppercase flex items-center gap-1 mb-1"><ScrollText size={10}/> Receita:</p>
+                            <div className="mt-2 ml-1 p-3 bg-white rounded-xl border border-gray-100/50">
+                                <p className="text-[9px] font-black text-gray-400 uppercase flex items-center gap-1 mb-1.5"><ScrollText size={10}/> Composição:</p>
                                 {i.detalhes_pizza.sabores.map((sNome, sIdx) => (
-                                    <p key={sIdx} className="text-[10px] font-bold text-gray-600 leading-tight mb-1">
-                                        <span className="text-[#b91c1c]">{sNome}:</span> {getIngredientesSabor(sNome)}
+                                    <p key={sIdx} className="text-[10px] font-medium text-gray-600 leading-tight mb-1">
+                                        <span className="text-[#b91c1c] font-bold">{sNome}:</span> {getIngredientesSabor(sNome)}
                                     </p>
                                 ))}
                             </div>
                           )}
                           
                           {i.tipo === 'pizza' && i.detalhes_pizza && (
-                            <div className="flex flex-wrap gap-2 mt-3 ml-2">
-                                <span className="bg-gray-900 text-white text-[9px] font-black px-3 py-1 rounded-lg uppercase">{i.detalhes_pizza.tamanho}</span>
-                                {i.detalhes_pizza.borda !== 'Sem Borda' && <span className="bg-yellow-100 text-yellow-800 text-[9px] font-black px-3 py-1 rounded-lg uppercase border border-yellow-200">Borda {i.detalhes_pizza.borda}</span>}
+                            <div className="flex flex-wrap gap-2 mt-3 ml-1">
+                                <span className="bg-gray-900 text-white text-[8px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider">{i.detalhes_pizza.tamanho}</span>
+                                {i.detalhes_pizza.borda !== 'Sem Borda' && <span className="bg-amber-100 text-amber-800 text-[8px] font-black px-2.5 py-1 rounded-md uppercase border border-amber-200 tracking-wider">Borda {i.detalhes_pizza.borda}</span>}
                             </div>
                           )}
                           
                           {i.observacao && (
-                            <div className="mt-3 ml-2 bg-red-50 border-l-4 border-red-500 p-2">
-                               <p className="text-[10px] font-black uppercase text-red-700 italic">⚠️ {i.observacao}</p>
+                            <div className="mt-3 ml-1 bg-red-50/50 border-l-2 border-red-500 p-2.5 rounded-r-lg">
+                               <p className="text-[10px] font-bold uppercase text-red-800 italic leading-relaxed">Nota: {i.observacao}</p>
                             </div>
                           )}
                         </div>
@@ -157,12 +157,12 @@ export function Cozinha() {
                   </div>
 
                   {/* RODAPÉ E AÇÕES */}
-                  <div className="p-6 bg-white border-t-4 border-gray-100">
+                  <div className="p-5 bg-white border-t border-gray-100">
                     <button 
                         onClick={() => atualizarStatus(p.id_pedido, p.status)} 
-                        className={`w-full py-6 rounded-2xl font-black uppercase text-sm shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3 ${p.status === 'Recebido' ? 'bg-gray-900 text-white hover:bg-black' : 'bg-green-600 text-white hover:bg-green-700'}`}
+                        className={`w-full py-5 rounded-2xl font-black uppercase text-xs tracking-widest shadow-md active:scale-95 transition-all flex items-center justify-center gap-3 ${p.status === 'Recebido' ? 'bg-gray-900 text-white hover:bg-black' : 'bg-green-700 text-white hover:bg-green-800'}`}
                     >
-                      {p.status === 'Recebido' ? "Iniciar Preparo" : "Pronto para Entrega"}
+                      {p.status === 'Recebido' ? "Iniciar Preparo" : "Concluir Produção"}
                     </button>
                   </div>
                 </div>

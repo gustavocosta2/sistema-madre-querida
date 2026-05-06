@@ -43,6 +43,7 @@ CREATE TYPE origem_pedido_enum AS ENUM (
 CREATE TABLE pessoas (
     cpf VARCHAR(14) PRIMARY KEY, -- Formato: 000.000.000-00
     nome VARCHAR(100) NOT NULL,
+    data_nascimento DATE,
     criado_em TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -79,7 +80,8 @@ CREATE TABLE telefones_pessoa (
 CREATE TABLE clientes (
     cpf_cliente VARCHAR(14) PRIMARY KEY REFERENCES pessoas(cpf) ON DELETE CASCADE,
     saldo_pontos INTEGER DEFAULT 0,
-    ultima_visita TIMESTAMPTZ
+    ultima_visita TIMESTAMPTZ,
+    observacao TEXT
 );
 
 CREATE TABLE funcionarios (
@@ -223,6 +225,31 @@ CREATE TABLE pizza_sabores (
     PRIMARY KEY (id_item, id_sabor)
 );
 
--- 5. DOCUMENTAÇÃO ADICIONAL (COMENTÁRIOS PARA AUDITORIA)
+-- 5. MÓDULO FINANCEIRO E CONTROLE DE CAIXA
+CREATE TABLE caixas (
+    id_caixa SERIAL PRIMARY KEY,
+    id_usuario_abertura INT NOT NULL REFERENCES usuarios(id_usuario),
+    id_usuario_fechamento INT REFERENCES usuarios(id_usuario),
+    data_abertura TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    data_fechamento TIMESTAMPTZ,
+    valor_abertura NUMERIC(10,2) DEFAULT 0.00,
+    valor_fechamento_esperado NUMERIC(10,2) DEFAULT 0.00,
+    valor_fechamento_informado NUMERIC(10,2),
+    status VARCHAR(20) DEFAULT 'Aberto',
+    observacao TEXT
+);
+
+CREATE TABLE fluxo_caixa (
+    id_movimentacao SERIAL PRIMARY KEY,
+    id_caixa INT NOT NULL REFERENCES caixas(id_caixa) ON DELETE CASCADE,
+    id_pedido INT REFERENCES pedidos(id_pedido) ON DELETE SET NULL,
+    tipo_movimentacao VARCHAR(20) NOT NULL, -- 'Entrada Venda', 'Suprimento', 'Sangria', 'Acerto Motoboy'
+    forma_pagamento VARCHAR(30) NOT NULL,
+    valor NUMERIC(10,2) NOT NULL CHECK (valor >= 0),
+    descricao VARCHAR(255),
+    data_hora TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 6. DOCUMENTAÇÃO ADICIONAL (COMENTÁRIOS PARA AUDITORIA)
 COMMENT ON TABLE historico_status_pedido IS 'Armazena cada mudança de estado do pedido para cálculo de tempo de entrega e auditoria.';
 COMMENT ON COLUMN itens_pedido.preco_unitario_vendido IS 'Congela o preço do produto no ato da venda para evitar distorções em relatórios futuros.';

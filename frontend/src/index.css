@@ -12,6 +12,13 @@ html, body, #root {
   margin: 0;
   padding: 0;
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* CUSTOM SHADOWS */
+.shadow-enterprise {
+  box-shadow: 0 10px 40px -10px rgba(0,0,0,0.05), 0 2px 10px -2px rgba(0,0,0,0.02);
 }
 
 body {
@@ -46,4 +53,36 @@ button:disabled {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #d1d5db;
+}
+
+/* ESTILOS DE IMPRESSÃO */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #print-ticket, #print-ticket * {
+    visibility: visible;
+  }
+  #print-ticket {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm; /* Largura padrão de impressora térmica */
+    margin: 0;
+    padding: 10px;
+    background-color: white;
+    color: black;
+  }
+  @page {
+    margin: 0;
+    size: auto;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

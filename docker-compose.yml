@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: postgres_pizzaria
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: pizzaria123
+      POSTGRES_DB: madre_querida_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql
+      - ./database/seed_motoboys.sql:/docker-entrypoint-initdb.d/03_seed_motoboys.sql
+      - ./database/seed_enderecos.sql:/docker-entrypoint-initdb.d/04_seed_enderecos.sql
+      - ./database/fix_produto_pizza.sql:/docker-entrypoint-initdb.d/05_fix_produto_pizza.sql
+      - ./database/fix_precos.sql:/docker-entrypoint-initdb.d/06_fix_precos.sql
+
+  backend:
+    build: ./backend
+    container_name: backend_pizzaria
+    restart: always
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      - DATABASE_URL=postgresql://admin:pizzaria123@db:5432/madre_querida_db
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    container_name: frontend_pizzaria
+    restart: always
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, Numeric, ForeignKey, Table, Text, DateTime, func
+from sqlalchemy import Column, Integer, String, Boolean, Numeric, ForeignKey, Table, Text, DateTime, Date, func
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -16,6 +16,7 @@ class Pessoa(Base):
     __tablename__ = "pessoas"
     cpf = Column(String(14), primary_key=True)
     nome = Column(String(100), nullable=False)
+    data_nascimento = Column(Date, nullable=True)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
     
     enderecos = relationship("Endereco", back_populates="pessoa")
@@ -67,6 +68,7 @@ class Cliente(Base):
     cpf_cliente = Column(String(14), ForeignKey("pessoas.cpf"), primary_key=True)
     saldo_pontos = Column(Integer, default=0)
     ultima_visita = Column(DateTime(timezone=True))
+    observacao = Column(Text, nullable=True)
     
     pessoa = relationship("Pessoa")
 
@@ -194,6 +196,15 @@ class ItemPedido(Base):
     produto = relationship("Produto")
     detalhe_pizza = relationship("ItemPizzaDetalhe", uselist=False, back_populates="item")
 
+class PizzaSabor(Base):
+    __tablename__ = "pizza_sabores"
+    id_item = Column(Integer, ForeignKey("item_pizza_detalhe.id_item"), primary_key=True)
+    id_sabor = Column(Integer, ForeignKey("sabores.id_sabor"), primary_key=True)
+    fracao = Column(Numeric(3, 2), default=1.00)
+
+    detalhe = relationship("ItemPizzaDetalhe", back_populates="sabores")
+    sabor = relationship("Sabor")
+
 class ItemPizzaDetalhe(Base):
     __tablename__ = "item_pizza_detalhe"
     id_item = Column(Integer, ForeignKey("itens_pedido.id_item"), primary_key=True)
@@ -205,11 +216,32 @@ class ItemPizzaDetalhe(Base):
     borda = relationship("Borda")
     sabores = relationship("PizzaSabor", back_populates="detalhe")
 
-class PizzaSabor(Base):
-    __tablename__ = "pizza_sabores"
-    id_item = Column(Integer, ForeignKey("item_pizza_detalhe.id_item"), primary_key=True)
-    id_sabor = Column(Integer, ForeignKey("sabores.id_sabor"), primary_key=True)
-    fracao = Column(Numeric(3, 2), default=1.00)
+# --- MÓDULO FINANCEIRO E CONTROLE DE CAIXA ---
+class Caixa(Base):
+    __tablename__ = "caixas"
+    id_caixa = Column(Integer, primary_key=True, index=True)
+    id_usuario_abertura = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=False)
+    id_usuario_fechamento = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=True)
+    data_abertura = Column(DateTime(timezone=True), server_default=func.now())
+    data_fechamento = Column(DateTime(timezone=True), nullable=True)
+    valor_abertura = Column(Numeric(10, 2), default=0.00)
+    valor_fechamento_esperado = Column(Numeric(10, 2), default=0.00) # Calculado pelo sistema
+    valor_fechamento_informado = Column(Numeric(10, 2), nullable=True) # Informado pelo usuário
+    status = Column(String(20), default="Aberto") # "Aberto", "Fechado"
+    observacao = Column(Text, nullable=True)
 
-    detalhe = relationship("ItemPizzaDetalhe", back_populates="sabores")
-    sabor = relationship("Sabor")
+    movimentacoes = relationship("FluxoCaixa", back_populates="caixa")
+
+class FluxoCaixa(Base):
+    __tablename__ = "fluxo_caixa"
+    id_movimentacao = Column(Integer, primary_key=True, index=True)
+    id_caixa = Column(Integer, ForeignKey("caixas.id_caixa"), nullable=False)
+    id_pedido = Column(Integer, ForeignKey("pedidos.id_pedido"), nullable=True)
+    tipo_movimentacao = Column(String(20), nullable=False) # "Entrada Venda", "Suprimento", "Sangria", "Acerto Motoboy"
+    forma_pagamento = Column(String(30), nullable=False) # "Dinheiro", "PIX", "Cartão"
+    valor = Column(Numeric(10, 2), nullable=False)
+    descricao = Column(String(255), nullable=True)
+    data_hora = Column(DateTime(timezone=True), server_default=func.now())
+
+    caixa = relationship("Caixa", back_populates="movimentacoes")
+    pedido = relationship("Pedido")
