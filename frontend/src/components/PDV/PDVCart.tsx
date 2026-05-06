@@ -1,5 +1,5 @@
-import React from 'react';
-import { ShoppingCart, X, History, Info } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShoppingCart, X, History, Info, Plus, Banknote, QrCode, CreditCard } from 'lucide-react';
 import type { ItemCarrinho, ClienteBusca, Endereco } from '../../types';
 
 interface PDVCartProps {
@@ -15,12 +15,15 @@ interface PDVCartProps {
   setTaxaEntrega: (v: number) => void;
   quilometragem: number;
   setQuilometragem: (v: number) => void;
-  formaPagamento: string;
-  setFormaPagamento: (v: string) => void;
-  valorRecebido: number;
-  setValorRecebido: (v: number) => void;
+  pagamentos: { forma_pagamento: string, valor_pago: number }[];
+  setPagamentos: (p: any) => void;
+  formaPagamentoAtual: string;
+  setFormaPagamentoAtual: (v: string) => void;
+  valorRecebidoDinheiro: number;
+  setValorRecebidoDinheiro: (v: number) => void;
   totalPedido: number;
   troco: number;
+  faltaPagar: number;
   totalEmPontosNoCarrinho: number;
   onFinalizar: (extra: any) => void;
 }
@@ -28,9 +31,25 @@ interface PDVCartProps {
 export const PDVCart: React.FC<PDVCartProps> = ({
   carrinho, setCarrinho, clienteSelecionado, onOpenNovoCliente, ultimoPedido,
   enderecosCliente, enderecoEntrega, setEnderecoEntrega, taxaEntrega, setTaxaEntrega,
-  quilometragem, setQuilometragem, formaPagamento, setFormaPagamento,
-  valorRecebido, setValorRecebido, totalPedido, troco, totalEmPontosNoCarrinho, onFinalizar
+  quilometragem, setQuilometragem, pagamentos, setPagamentos,
+  formaPagamentoAtual, setFormaPagamentoAtual, valorRecebidoDinheiro, setValorRecebidoDinheiro,
+  totalPedido, troco, faltaPagar, totalEmPontosNoCarrinho, onFinalizar
 }) => {
+  const [valorDigitado, setValorDigitado] = useState('');
+
+  const handleAddPagamento = () => {
+    const v = parseFloat(valorDigitado) || faltaPagar;
+    if (v <= 0) return;
+    if (v > (faltaPagar + 0.01)) return alert("Valor maior que o saldo restante.");
+    
+    setPagamentos([...pagamentos, { forma_pagamento: formaPagamentoAtual, valor_pago: v }]);
+    setValorDigitado('');
+  };
+
+  const removePagamento = (idx: number) => {
+    setPagamentos(pagamentos.filter((_: any, i: number) => i !== idx));
+  };
+
   return (
     <div className="w-[400px] bg-white border-l border-gray-100 flex flex-col shrink-0 shadow-2xl">
       <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center text-gray-900">
@@ -69,7 +88,7 @@ export const PDVCart: React.FC<PDVCartProps> = ({
           <div key={i.id} className={`p-4 rounded-2xl border relative group transition-all ${i.pago_com_pontos ? 'bg-amber-50/50 border-amber-100' : 'bg-white border-gray-100 hover:shadow-md'}`}>
             <button onClick={() => setCarrinho(carrinho.filter(x => x.id !== i.id))} className="absolute -right-2 -top-2 w-7 h-7 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"><X size={14} strokeWidth={4} /></button>
             <p className="font-black text-xs uppercase text-gray-900 leading-tight">{i.nome}</p>
-            <p className="text-[9px] font-bold text-red-700 uppercase mt-1 opacity-70 tracking-wider">{i.detalhe}</p>
+            <p className="text-[9px] font-bold text-red-700 uppercase mt-1 tracking-wider">{i.detalhe}</p>
             {i.observacao && <p className="text-[10px] text-gray-500 mt-1 leading-relaxed border-t border-gray-50 pt-1 italic">{i.observacao}</p>}
             <p className={`text-right font-black text-lg mt-1 italic ${i.pago_com_pontos ? 'text-amber-600' : 'text-emerald-700'}`}>
               {i.pago_com_pontos ? `${i.custo_pontos} Pts` : `R$ ${i.preco.toFixed(2)}`}
@@ -83,55 +102,53 @@ export const PDVCart: React.FC<PDVCartProps> = ({
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <label className="text-[9px] font-black uppercase text-gray-400 ml-2">Taxa Entrega</label>
-            <input 
-              type="number" 
-              min="0"
-              value={taxaEntrega} 
-              onChange={e => {
-                const val = parseFloat(e.target.value);
-                setTaxaEntrega(val < 0 ? 0 : (val || 0));
-              }} 
-              className="w-full bg-white border border-gray-200 rounded-xl p-2.5 font-bold text-sm focus:border-green-600 outline-none" 
-            />
+            <input type="number" min="0" value={taxaEntrega} onChange={e => setTaxaEntrega(parseFloat(e.target.value) || 0)} className="w-full bg-white border border-gray-200 rounded-xl p-2.5 font-bold text-sm outline-none focus:border-green-600" />
           </div>
           <div className="space-y-1">
             <label className="text-[9px] font-black uppercase text-gray-400 ml-2">Km Rodado</label>
-            <input 
-              type="number" 
-              min="0"
-              value={quilometragem} 
-              onChange={e => {
-                const val = parseFloat(e.target.value);
-                setQuilometragem(val < 0 ? 0 : (val || 0));
-              }} 
-              className="w-full bg-white border border-gray-200 rounded-xl p-2.5 font-bold text-sm focus:border-green-600 outline-none" 
-            />
+            <input type="number" min="0" value={quilometragem} onChange={e => setQuilometragem(parseFloat(e.target.value) || 0)} className="w-full bg-white border border-gray-200 rounded-xl p-2.5 font-bold text-sm outline-none focus:border-green-600" />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase text-gray-400 ml-2">Pagamento</label>
-            <select value={formaPagamento} onChange={e => setFormaPagamento(e.target.value)} className="w-full bg-white border border-gray-200 rounded-xl p-2.5 font-bold text-sm outline-none focus:border-green-600">
-              <option>Dinheiro</option>
-              <option>PIX</option>
-              <option>Débito</option>
-              <option>Crédito</option>
-              <option>iFood (Online)</option>
-            </select>
-          </div>
-          <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase text-gray-400 ml-2">Recebido</label>
-            <input 
-              type="number" 
-              min="0"
-              value={valorRecebido} 
-              onChange={e => {
-                const val = parseFloat(e.target.value);
-                setValorRecebido(val < 0 ? 0 : (val || 0));
-              }} 
-              className="w-full bg-white border border-gray-200 rounded-xl p-2.5 font-bold text-sm focus:border-green-600 outline-none" 
-            />
-          </div>
+
+        <div className="space-y-3 pt-2 border-t border-gray-100">
+            <p className="text-[9px] font-black uppercase text-gray-400 ml-2">Pagamento (Mix)</p>
+            <div className="space-y-1.5">
+                {pagamentos.map((p, idx) => (
+                    <div key={idx} className="flex justify-between items-center bg-white border border-gray-100 px-3 py-2 rounded-xl shadow-sm">
+                        <div className="flex items-center gap-2">
+                            {p.forma_pagamento === 'Dinheiro' ? <Banknote size={14} className="text-emerald-600"/> : (p.forma_pagamento === 'PIX' ? <QrCode size={14} className="text-blue-500"/> : <CreditCard size={14} className="text-purple-500"/>)}
+                            <span className="text-[10px] font-black uppercase text-gray-700">{p.forma_pagamento}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <span className="text-xs font-black text-gray-900">R$ {p.valor_pago.toFixed(2)}</span>
+                            <button onClick={() => removePagamento(idx)} className="text-red-500 hover:text-red-700 p-1"><X size={14} strokeWidth={3}/></button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {faltaPagar > 0 && (
+                <div className="flex gap-2">
+                    <select value={formaPagamentoAtual} onChange={e => setFormaPagamentoAtual(e.target.value)} className="flex-1 bg-white border border-gray-200 rounded-xl p-2.5 font-bold text-xs outline-none focus:border-green-600">
+                        <option>Dinheiro</option>
+                        <option>PIX</option>
+                        <option>Débito</option>
+                        <option>Crédito</option>
+                        <option>iFood (Online)</option>
+                    </select>
+                    <input type="number" placeholder={`R$ ${faltaPagar.toFixed(2)}`} value={valorDigitado} onChange={e => setValorDigitado(e.target.value)} className="w-24 bg-white border border-gray-200 rounded-xl p-2.5 font-black text-xs text-right outline-none focus:border-green-600" />
+                    <button onClick={handleAddPagamento} className="bg-gray-900 text-white p-2.5 rounded-xl hover:bg-black transition-all">
+                        <Plus size={18}/>
+                    </button>
+                </div>
+            )}
+
+            {pagamentos.some(p => p.forma_pagamento === 'Dinheiro') && (
+                <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-xl space-y-1">
+                    <label className="text-[8px] font-black uppercase text-emerald-700 ml-1">Total em Dinheiro Recebido (p/ Troco)</label>
+                    <input type="number" placeholder="Valor recebido" value={valorRecebidoDinheiro || ''} onChange={e => setValorRecebidoDinheiro(parseFloat(e.target.value) || 0)} className="w-full bg-white border border-emerald-200 rounded-lg p-2 font-black text-sm outline-none" />
+                </div>
+            )}
         </div>
       </div>
 
@@ -145,30 +162,19 @@ export const PDVCart: React.FC<PDVCartProps> = ({
             <span className="text-[10px] font-black uppercase text-white/50 tracking-widest">Total do Pedido</span>
             <span className="text-4xl font-black tracking-tighter italic">R$ {totalPedido.toFixed(2)}</span>
           </div>
+          {faltaPagar > 0.01 && (
+            <div className="flex justify-between items-baseline text-amber-500 animate-pulse">
+                <span className="text-[9px] font-black uppercase tracking-widest">Falta Receber</span>
+                <span className="text-lg font-black italic">R$ {faltaPagar.toFixed(2)}</span>
+            </div>
+          )}
         </div>
         <button 
-          onClick={() => {
-            const payloadExtra = {
-              taxa_entrega: Number(taxaEntrega) || 0,
-              valor_recebido: Number(valorRecebido) || 0,
-              troco: Number(troco) || 0,
-              quilometragem: Number(quilometragem) || 0,
-              pagamentos: [{ forma_pagamento: formaPagamento, valor_pago: totalPedido }]
-            };
-            onFinalizar(payloadExtra);
-          }} 
-          disabled={
-            !clienteSelecionado || 
-            !enderecoEntrega || 
-            carrinho.length === 0 || 
-            totalEmPontosNoCarrinho > (clienteSelecionado?.pontos || 0) ||
-            (formaPagamento === 'Dinheiro' && valorRecebido < totalPedido)
-          } 
+          onClick={() => onFinalizar({ taxa_entrega: Number(taxaEntrega) || 0, valor_recebido: Number(valorRecebidoDinheiro) || pagamentos.reduce((acc, p) => acc + p.valor_pago, 0), troco: Number(troco) || 0, quilometragem: Number(quilometragem) || 0, pagamentos })} 
+          disabled={!clienteSelecionado || !enderecoEntrega || carrinho.length === 0 || faltaPagar > 0.01 || (pagamentos.some(p => p.forma_pagamento === 'Dinheiro') && valorRecebidoDinheiro < pagamentos.filter(p => p.forma_pagamento === 'Dinheiro').reduce((acc, p) => acc + p.valor_pago, 0))} 
           className="w-full bg-green-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl hover:bg-green-500 disabled:opacity-10 active:scale-95 transition-all"
         >
-          {formaPagamento === 'Dinheiro' && valorRecebido < totalPedido && valorRecebido > 0 
-            ? "Valor Insuficiente" 
-            : "Finalizar Pedido"}
+          {faltaPagar > 0.01 ? "Aguardando Pagto" : "Finalizar Pedido"}
         </button>
       </div>
     </div>

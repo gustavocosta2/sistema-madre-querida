@@ -15,23 +15,43 @@ def get_dashboard(db: Session = Depends(database.get_db)):
     pedidos_hoje = db.query(models.Pedido).filter(func.date(models.Pedido.data_hora_criacao) == hoje, models.Pedido.status == "Finalizado").count()
     ticket_medio = fat_hoje / pedidos_hoje if pedidos_hoje > 0 else 0
     
+    # 7-Day Trend
+    sete_dias_atras = func.current_date() - text("INTERVAL '7 days'")
+    trend = db.query(
+        func.date(models.Pedido.data_hora_criacao).label("data"),
+        func.sum(models.Pedido.valor_total).label("total")
+    ).filter(
+        models.Pedido.data_hora_criacao >= sete_dias_atras,
+        models.Pedido.status == "Finalizado"
+    ).group_by(func.date(models.Pedido.data_hora_criacao)).order_by(func.date(models.Pedido.data_hora_criacao)).all()
+
+    # Peak Hours (0-23)
+    peak_hours = db.query(
+        func.extract('hour', models.Pedido.data_hora_criacao).label("hora"),
+        func.count(models.Pedido.id_pedido).label("qtd")
+    ).filter(
+        models.Pedido.status == "Finalizado"
+    ).group_by(text("hora")).order_by(text("hora")).all()
+
     top_sabores = db.query(models.Sabor.nome_sabor, func.count(models.PizzaSabor.id_sabor).label("total"))\
                     .join(models.PizzaSabor, models.Sabor.id_sabor == models.PizzaSabor.id_sabor)\
                     .join(models.ItemPizzaDetalhe, models.PizzaSabor.id_item == models.ItemPizzaDetalhe.id_item)\
                     .join(models.ItemPedido, models.ItemPizzaDetalhe.id_item == models.ItemPedido.id_item)\
                     .join(models.Pedido, models.ItemPedido.id_pedido == models.Pedido.id_pedido)\
-                    .filter(func.date(models.Pedido.data_hora_criacao) == hoje, models.Pedido.status == "Finalizado")\
+                    .filter(models.Pedido.status == "Finalizado")\
                     .group_by(models.Sabor.nome_sabor).order_by(text("total DESC")).limit(5).all()
 
     pagamentos = db.query(models.Pagamento.forma_pagamento, func.sum(models.Pagamento.valor_pago).label("total"))\
                    .join(models.Pedido, models.Pagamento.id_pedido == models.Pedido.id_pedido)\
-                   .filter(func.date(models.Pedido.data_hora_criacao) == hoje, models.Pedido.status == "Finalizado")\
+                   .filter(models.Pedido.status == "Finalizado")\
                    .group_by(models.Pagamento.forma_pagamento).all()
 
     return {
         "faturamento_hoje": float(fat_hoje),
         "pedidos_hoje": pedidos_hoje,
         "ticket_medio": float(ticket_medio),
+        "trend_7_dias": [{"data": t.data.strftime("%d/%m"), "valor": float(t.total)} for t in trend],
+        "horarios_pico": [{"hora": f"{int(h.hora):02d}h", "pedidos": h.qtd} for h in peak_hours],
         "top_sabores": [{"nome": s.nome_sabor, "vendas": s.total} for s in top_sabores],
         "pagamentos": [{"forma": p.forma_pagamento, "valor": float(p.total)} for p in pagamentos]
     }

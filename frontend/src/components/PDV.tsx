@@ -34,20 +34,31 @@ export function PDV({
 
   // Campos de fechamento
   const [taxaEntrega, setTaxaEntrega] = useState(0);
-  const [valorRecebido, setValorRecebido] = useState(0);
   const [quilometragem, setQuilometragem] = useState(0);
-  const [formaPagamento, setFormaPagamento] = useState('Dinheiro');
+  const [pagamentos, setPagamentos] = useState<{ forma_pagamento: string, valor_pago: number }[]>([]);
+  const [formaPagamentoAtual, setFormaPagamentoAtual] = useState('Dinheiro');
+  const [valorRecebidoDinheiro, setValorRecebidoDinheiro] = useState(0); 
   const [editingCrm, setEditingCrm] = useState(false);
   const [tempObs, setTempObs] = useState('');
 
   const totalPedido = carrinho.reduce((a, b) => a + b.preco, 0) + taxaEntrega;
-  const troco = valorRecebido > totalPedido ? valorRecebido - totalPedido : 0;
+  const totalPagoNoMix = pagamentos.reduce((acc, p) => acc + p.valor_pago, 0);
+  const faltaPagar = Math.max(0, totalPedido - totalPagoNoMix);
+  
+  // Troco só faz sentido se o último pagamento ou o mix conter dinheiro que exceda o valor total
+  const valorTotalDinheiroNoMix = pagamentos.filter(p => p.forma_pagamento === 'Dinheiro').reduce((acc, p) => acc + p.valor_pago, 0);
+  const troco = (valorRecebidoDinheiro > valorTotalDinheiroNoMix) ? (valorRecebidoDinheiro - valorTotalDinheiroNoMix) : 0;
 
   useEffect(() => {
-    if (formaPagamento !== 'Dinheiro' && totalPedido > 0) {
-      setValorRecebido(totalPedido);
-    }
-  }, [formaPagamento, totalPedido]);
+    // Limpa pagamentos ao mudar carrinho
+    setPagamentos([]);
+  }, [carrinho, taxaEntrega]);
+
+  useEffect(() => {
+    // Se não houver dinheiro no mix, reseta o valor recebido (troco)
+    const temDinheiro = pagamentos.some(p => p.forma_pagamento === 'Dinheiro');
+    if (!temDinheiro) setValorRecebidoDinheiro(0);
+  }, [pagamentos]);
 
   useEffect(() => {
     if (buscaCliente.length > 2) {
@@ -136,27 +147,24 @@ export function PDV({
       </div>
 
       <PDVCart 
-        carrinho={carrinho}
-        setCarrinho={setCarrinho}
+        carrinho={carrinho} setCarrinho={setCarrinho}
         clienteSelecionado={clienteSelecionado}
         onOpenNovoCliente={onOpenNovoCliente}
         ultimoPedido={ultimoPedido}
         enderecosCliente={enderecosCliente}
-        enderecoEntrega={enderecoEntrega}
-        setEnderecoEntrega={setEnderecoEntrega}
-        taxaEntrega={taxaEntrega}
-        setTaxaEntrega={setTaxaEntrega}
-        quilometragem={quilometragem}
-        setQuilometragem={setQuilometragem}
-        formaPagamento={formaPagamento}
-        setFormaPagamento={setFormaPagamento}
-        valorRecebido={valorRecebido}
-        setValorRecebido={setValorRecebido}
+        enderecoEntrega={enderecoEntrega} setEnderecoEntrega={setEnderecoEntrega}
+        taxaEntrega={taxaEntrega} setTaxaEntrega={setTaxaEntrega}
+        quilometragem={quilometragem} setQuilometragem={setQuilometragem}
+        pagamentos={pagamentos} setPagamentos={setPagamentos}
+        formaPagamentoAtual={formaPagamentoAtual} setFormaPagamentoAtual={setFormaPagamentoAtual}
+        valorRecebidoDinheiro={valorRecebidoDinheiro} setValorRecebidoDinheiro={setValorRecebidoDinheiro}
         totalPedido={totalPedido}
         troco={troco}
+        faltaPagar={faltaPagar}
         totalEmPontosNoCarrinho={totalEmPontosNoCarrinho}
         onFinalizar={onFinalizar}
       />
+
     </div>
   );
 }
