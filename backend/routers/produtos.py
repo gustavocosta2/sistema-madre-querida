@@ -60,9 +60,9 @@ def listar_bebidas(db: Session = Depends(database.get_db)):
         "id_produto": b.id_bebida,
         "nome": b.produto.nome,
         "preco": float(b.preco_venda),
-        "quantidade": b.estoque_atual,
+        "quantidade": b.quantidade,
         "disponivel": b.produto.disponivel,
-        "preco_pontos": b.preco_pontos
+        "preco_pontos": b.produto.preco_pontos
     } for b in res]
 
 @router.post("/bebidas", dependencies=[Depends(auth.require_admin)])
@@ -72,7 +72,8 @@ def criar_bebida(payload: dict, db: Session = Depends(database.get_db)):
         novo_prod = models.Produto(
             nome=payload.get("nome"),
             tipo_produto="Bebida",
-            disponivel=True
+            disponivel=True,
+            preco_pontos=payload.get("preco_pontos", 0)
         )
         db.add(novo_prod)
         db.flush()
@@ -81,8 +82,7 @@ def criar_bebida(payload: dict, db: Session = Depends(database.get_db)):
         nova_bebida = models.Bebida(
             id_bebida=novo_prod.id_produto,
             preco_venda=payload.get("preco"),
-            estoque_atual=payload.get("quantidade"),
-            preco_pontos=payload.get("preco_pontos", 0)
+            quantidade=payload.get("quantidade")
         )
         db.add(nova_bebida)
         db.commit()
@@ -98,8 +98,8 @@ def atualizar_bebida(id_prod: int, payload: schemas.BebidaUpdate, db: Session = 
     
     if payload.nome: bebida.produto.nome = payload.nome
     if payload.preco is not None: bebida.preco_venda = payload.preco
-    if payload.quantidade is not None: bebida.estoque_atual = payload.quantidade
-    if payload.preco_pontos is not None: bebida.preco_pontos = payload.preco_pontos
+    if payload.quantidade is not None: bebida.quantidade = payload.quantidade
+    if payload.preco_pontos is not None: bebida.produto.preco_pontos = payload.preco_pontos
     
     db.commit()
     return {"status": "sucesso"}

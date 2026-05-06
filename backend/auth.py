@@ -1,24 +1,24 @@
 from datetime import datetime, timedelta
-from jose import jwt
+from jose import jwt, JWTError
 from passlib.context import CryptContext
 import os
 from dotenv import load_dotenv
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 load_dotenv()
 
 # Configurações de Segurança
-# EM PRODUÇÃO: Sempre definir SECRET_KEY no arquivo .env
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
-    # Fallback apenas para desenvolvimento local. Em prod, isso deve falhar.
     SECRET_KEY = "dev-secret-key-change-me-in-production"
     print("⚠️ AVISO: SECRET_KEY não definida. Usando chave de desenvolvimento.")
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 480 
 
-# Trocamos 'bcrypt' por 'pbkdf2_sha256' para garantir compatibilidade total com Python 3.13+
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+security = HTTPBearer()
 
 # Funções para Senha
 def verificar_senha(senha_pura, senha_hash):
@@ -34,12 +34,12 @@ def criar_token_acesso(data: dict):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import JWTError, jwt
-...
-# Segurança
-security = HTTPBearer()
+def decodificar_token(token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except JWTError:
+        return None
 
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials

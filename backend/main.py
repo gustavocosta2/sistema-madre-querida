@@ -41,9 +41,9 @@ app.include_router(auth.router)
 app.include_router(produtos.router)
 app.include_router(clientes.router)
 app.include_router(pedidos.router)
-app.include_router(rh.router)
+app.include_router(rh.router, prefix="/gestao")
 app.include_router(financeiro.router, prefix="/financeiro/caixa")
-app.include_router(gestao.router)
+app.include_router(gestao.router, prefix="/gestao")
 
 if __name__ == "__main__":
     import uvicorn

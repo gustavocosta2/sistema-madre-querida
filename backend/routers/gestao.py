@@ -23,10 +23,10 @@ def get_dashboard(db: Session = Depends(database.get_db)):
                     .filter(func.date(models.Pedido.data_hora_criacao) == hoje, models.Pedido.status == "Finalizado")\
                     .group_by(models.Sabor.nome_sabor).order_by(text("total DESC")).limit(5).all()
 
-    pagamentos = db.query(models.PagamentoPedido.forma_pagamento, func.sum(models.PagamentoPedido.valor_pago).label("total"))\
-                   .join(models.Pedido, models.PagamentoPedido.id_pedido == models.Pedido.id_pedido)\
+    pagamentos = db.query(models.Pagamento.forma_pagamento, func.sum(models.Pagamento.valor_pago).label("total"))\
+                   .join(models.Pedido, models.Pagamento.id_pedido == models.Pedido.id_pedido)\
                    .filter(func.date(models.Pedido.data_hora_criacao) == hoje, models.Pedido.status == "Finalizado")\
-                   .group_by(models.PagamentoPedido.forma_pagamento).all()
+                   .group_by(models.Pagamento.forma_pagamento).all()
 
     return {
         "faturamento_hoje": float(fat_hoje),

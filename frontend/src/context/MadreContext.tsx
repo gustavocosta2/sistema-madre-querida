@@ -60,6 +60,10 @@ export function MadreProvider({ children }: { children: React.ReactNode }) {
   }, [audioEnabled]);
 
   const refreshAll = useCallback(async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     try {
       console.log("♻️ REFRESH ALL: Buscando dados de referência...");
       const fetchSafe = (p: Promise<any>) => p.then(res => res.data).catch(() => []);
@@ -73,7 +77,7 @@ export function MadreProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]); // Adicionado user como dependência
 
   const refreshOrders = useCallback(async () => {
     if (!user) return;
@@ -85,14 +89,16 @@ export function MadreProvider({ children }: { children: React.ReactNode }) {
       
       const novosAtivos = ativos.data || [];
       
-      // Lógica de Alerta Sonoro: Verifica se entrou um ID novo
       if (novosAtivos.length > 0) {
         const currentMaxId = Math.max(...novosAtivos.map((p: any) => p.id_pedido));
-        if (lastMaxId > 0 && currentMaxId > lastMaxId) {
-          console.log("🔔 NOVO PEDIDO DETECTADO! Tocando alerta...");
-          tocarAlerta();
-        }
-        setLastMaxId(currentMaxId);
+        // Usamos a versão funcional do setState para evitar depender do valor de lastMaxId no useCallback
+        setLastMaxId(prev => {
+            if (prev > 0 && currentMaxId > prev) {
+                console.log("🔔 NOVO PEDIDO DETECTADO!");
+                tocarAlerta();
+            }
+            return currentMaxId;
+        });
       }
 
       setPedidosAtivos(novosAtivos);
@@ -100,7 +106,7 @@ export function MadreProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.error("Erro ao atualizar pedidos", e);
     }
-  }, [user, lastMaxId, tocarAlerta]);
+  }, [user, tocarAlerta]); // Removido lastMaxId das dependências
 
   useEffect(() => {
     refreshAll();

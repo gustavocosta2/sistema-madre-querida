@@ -7,9 +7,9 @@ import schemas
 import database
 import auth
 
-router = APIRouter(tags=["RH & Equipe"], dependencies=[Depends(auth.require_admin)])
+router = APIRouter(tags=["RH & Equipe"], dependencies=[Depends(auth.get_current_user)])
 
-@router.get("/gestao/funcionarios", response_model=List[schemas.FuncionarioResponse])
+@router.get("/funcionarios", response_model=List[schemas.FuncionarioResponse], dependencies=[Depends(auth.require_admin)])
 def listar_funcionarios(db: Session = Depends(database.get_db)):
     q = db.query(
         models.Funcionario.cpf_funcionario.label("cpf"),
@@ -23,7 +23,7 @@ def listar_funcionarios(db: Session = Depends(database.get_db)):
      .all()
     return q
 
-@router.post("/gestao/funcionarios")
+@router.post("/funcionarios", dependencies=[Depends(auth.require_admin)])
 def criar_funcionario(f_in: schemas.FuncionarioCreate, db: Session = Depends(database.get_db)):
     try:
         pessoa = db.get(models.Pessoa, f_in.cpf)
@@ -57,7 +57,7 @@ def criar_funcionario(f_in: schemas.FuncionarioCreate, db: Session = Depends(dat
         db.rollback()
         raise HTTPException(400, str(e))
 
-@router.put("/gestao/funcionarios/{cpf}")
+@router.put("/funcionarios/{cpf}", dependencies=[Depends(auth.require_admin)])
 def atualizar_funcionario(cpf: str, f_in: schemas.FuncionarioUpdate, db: Session = Depends(database.get_db)):
     try:
         pessoa = db.get(models.Pessoa, cpf)
@@ -81,7 +81,7 @@ def atualizar_funcionario(cpf: str, f_in: schemas.FuncionarioUpdate, db: Session
         db.rollback()
         raise HTTPException(400, str(e))
 
-@router.patch("/gestao/funcionarios/{cpf}/status")
+@router.patch("/funcionarios/{cpf}/status", dependencies=[Depends(auth.require_admin)])
 def toggle_funcionario_status(cpf: str, db: Session = Depends(database.get_db)):
     func = db.get(models.Funcionario, cpf)
     if not func: raise HTTPException(404, "Funcionário não encontrado")
@@ -97,7 +97,7 @@ def listar_motoboys(db: Session = Depends(database.get_db)):
             .filter(models.Funcionario.ativo == True).all()
     return [{"cpf": r.cpf_motoboy, "nome": r.nome, "placa": r.placa_veiculo} for r in res]
 
-@router.get("/gestao/acerto_motoboys")
+@router.get("/acerto_motoboys", dependencies=[Depends(auth.require_admin)])
 def get_acerto_motoboys(db: Session = Depends(database.get_db)):
     hoje = func.current_date()
     res = db.query(

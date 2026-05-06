@@ -57,13 +57,13 @@ def criar_pedido(p_in: schemas.PedidoCreate, db: Session = Depends(database.get_
                 # Baixa estoque bebida
                 bebida = db.query(models.Bebida).filter_by(id_bebida=it.id_produto).first()
                 if bebida:
-                    if bebida.estoque_atual <= 0:
+                    if bebida.quantidade <= 0:
                         raise HTTPException(400, f"Estoque insuficiente para a bebida: {bebida.produto.nome}")
-                    bebida.estoque_atual -= 1
+                    bebida.quantidade -= 1
 
         # 3. Processa Pagamentos
         for pag in p_in.pagamentos:
-            db.add(models.PagamentoPedido(
+            db.add(models.Pagamento(
                 id_pedido=novo_pedido.id_pedido,
                 forma_pagamento=pag.forma_pagamento,
                 valor_pago=pag.valor_pago

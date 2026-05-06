@@ -14,7 +14,11 @@ export function Login({ onLogin }: LoginProps) {
         username: target[0].value, 
         password: target[1].value 
       });
-      const userData = { username: res.data.username, role: res.data.role };
+      const userData = { 
+        username: res.data.username, 
+        role: res.data.role,
+        access_token: res.data.access_token
+      };
       localStorage.setItem('madre_user', JSON.stringify(userData));
       onLogin(userData);
     } catch {
