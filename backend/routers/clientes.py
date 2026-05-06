@@ -6,10 +6,12 @@ import database
 import auth
 
 router = APIRouter(tags=["Clientes & Endereços"], dependencies=[Depends(auth.get_current_user)])
-
 @router.get("/clientes/buscar/{termo}")
 def buscar_clientes(termo: str, db: Session = Depends(database.get_db)):
-    q = db.query(models.Cliente).join(models.Pessoa).filter((models.Pessoa.cpf.like(f"%{termo}%")) | (models.Pessoa.nome.ilike(f"%{termo}%"))).all()
+    q = db.query(models.Cliente).join(models.Pessoa).filter(
+        models.Cliente.ativo == True,
+        (models.Pessoa.cpf.like(f"%{termo}%")) | (models.Pessoa.nome.ilike(f"%{termo}%"))
+    ).all()
     return [{
         "cpf": c.cpf_cliente, 
         "nome": c.pessoa.nome, 
@@ -44,11 +46,18 @@ def ultimo_pedido_cliente(cpf: str, db: Session = Depends(database.get_db)):
     
     resumo = []
     for it in p.itens:
-        if it.tipo_item == 'Pizza':
-            sabores = [s.sabor.nome_sabor for s in it.detalhe_pizza.sabores]
-            resumo.append(f"Pizza {it.detalhe_pizza.tamanho.nome_tamanho} ({' / '.join(sabores)})")
+        tipo = (it.tipo_item or "Produto").lower()
+        if tipo == 'pizza' and it.detalhe_pizza:
+            sabores = [s.sabor.nome_sabor for s in it.detalhe_pizza.sabores if s.sabor]
+            tamanho = it.detalhe_pizza.tamanho.nome_tamanho if it.detalhe_pizza.tamanho else "N/A"
+            resumo.append(f"Pizza {tamanho} ({' / '.join(sabores)})")
         else:
-            resumo.append(f"{it.bebida.produto.nome}")
+            nome_prod = "Produto"
+            if it.bebida and it.bebida.produto:
+                nome_prod = it.bebida.produto.nome
+            elif it.produto:
+                nome_prod = it.produto.nome
+            resumo.append(f"{nome_prod}")
 
     return {
         "id": p.id_pedido,
@@ -114,3 +123,19 @@ def criar_cliente_completo(c_in: schemas.ClienteCompletoCreate, db: Session = De
     except Exception as e:
         db.rollback()
         raise HTTPException(400, str(e))
+
+@router.delete("/clientes/{cpf}", dependencies=[Depends(auth.require_admin)])
+def desativar_cliente(cpf: str, db: Session = Depends(database.get_db)):
+    cliente = db.get(models.Cliente, cpf)
+    if not cliente: raise HTTPException(404, "Cliente não encontrado")
+    cliente.ativo = False
+    db.commit()
+    return {"status": "sucesso"}
+
+@router.patch("/{cpf}/status", dependencies=[Depends(auth.require_admin)])
+def toggle_status_cliente(cpf: str, db: Session = Depends(database.get_db)):
+    cliente = db.get(models.Cliente, cpf)
+    if not cliente: raise HTTPException(404, "Cliente não encontrado")
+    cliente.ativo = not cliente.ativo
+    db.commit()
+    return {"status": "sucesso", "novo_status": cliente.ativo}

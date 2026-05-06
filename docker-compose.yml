@@ -15,10 +15,6 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
       - ./database/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql
-      - ./database/seed_motoboys.sql:/docker-entrypoint-initdb.d/03_seed_motoboys.sql
-      - ./database/seed_enderecos.sql:/docker-entrypoint-initdb.d/04_seed_enderecos.sql
-      - ./database/fix_produto_pizza.sql:/docker-entrypoint-initdb.d/05_fix_produto_pizza.sql
-      - ./database/fix_precos.sql:/docker-entrypoint-initdb.d/06_fix_precos.sql
 
   backend:
     build: ./backend

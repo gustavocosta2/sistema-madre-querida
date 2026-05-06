@@ -11,6 +11,11 @@ router = APIRouter(tags=["Pedidos & Logística"], dependencies=[Depends(auth.get
 
 @router.post("/pedidos")
 def criar_pedido(p_in: schemas.PedidoCreate, db: Session = Depends(database.get_db)):
+    # 0. Verifica se há caixa aberto (Obrigatório para vendas)
+    caixa = db.query(models.Caixa).filter(models.Caixa.status == "Aberto").first()
+    if not caixa:
+        raise HTTPException(status_code=400, detail="Não é possível realizar vendas sem um caixa aberto. Por favor, abra o caixa primeiro.")
+
     try:
         # 1. Cria Pedido Base
         novo_pedido = models.Pedido(
@@ -32,6 +37,7 @@ def criar_pedido(p_in: schemas.PedidoCreate, db: Session = Depends(database.get_
             item_db = models.ItemPedido(
                 id_pedido=novo_pedido.id_pedido,
                 tipo_item=it.tipo.capitalize(),
+                quantidade=it.quantidade,
                 preco_unitario_vendido=it.preco,
                 observacao=it.observacao
             )
@@ -52,14 +58,16 @@ def criar_pedido(p_in: schemas.PedidoCreate, db: Session = Depends(database.get_
                 for s_id in it.sabores:
                     db.add(models.PizzaSabor(id_item=item_db.id_item, id_sabor=s_id, fracao=1.0/len(it.sabores)))
             else:
+                if not it.id_produto:
+                    raise HTTPException(400, "ID do produto é obrigatório para itens que não são pizza.")
                 item_db.id_produto = it.id_produto
                 db.add(item_db)
                 # Baixa estoque bebida
                 bebida = db.query(models.Bebida).filter_by(id_bebida=it.id_produto).first()
                 if bebida:
-                    if bebida.quantidade <= 0:
-                        raise HTTPException(400, f"Estoque insuficiente para a bebida: {bebida.produto.nome}")
-                    bebida.quantidade -= 1
+                    if bebida.quantidade < it.quantidade:
+                        raise HTTPException(400, f"Estoque insuficiente para a bebida: {bebida.produto.nome} (Disponível: {bebida.quantidade})")
+                    bebida.quantidade -= it.quantidade
 
         # 3. Processa Pagamentos
         for pag in p_in.pagamentos:
@@ -69,19 +77,17 @@ def criar_pedido(p_in: schemas.PedidoCreate, db: Session = Depends(database.get_
                 valor_pago=pag.valor_pago
             ))
             
-            # Integração automática com o Caixa (se houver caixa aberto)
-            caixa = db.query(models.Caixa).filter(models.Caixa.status == "Aberto").first()
-            if caixa:
-                db.add(models.FluxoCaixa(
-                    id_caixa=caixa.id_caixa,
-                    id_pedido=novo_pedido.id_pedido,
-                    tipo_movimentacao="Entrada Venda",
-                    forma_pagamento=pag.forma_pagamento,
-                    valor=pag.valor_pago,
-                    descricao=f"Venda Pedido #{novo_pedido.id_pedido}"
-                ))
-                if pag.forma_pagamento == "Dinheiro":
-                    caixa.valor_fechamento_esperado += pag.valor_pago
+            # Integração automática com o Caixa (já verificado no início)
+            db.add(models.FluxoCaixa(
+                id_caixa=caixa.id_caixa,
+                id_pedido=novo_pedido.id_pedido,
+                tipo_movimentacao="Entrada Venda",
+                forma_pagamento=pag.forma_pagamento,
+                valor=pag.valor_pago,
+                descricao=f"Venda Pedido #{novo_pedido.id_pedido}"
+            ))
+            if pag.forma_pagamento == "Dinheiro":
+                caixa.valor_fechamento_esperado += pag.valor_pago
 
         # 4. Atualiza pontos fidelidade
         if p_in.cpf_cliente:
@@ -100,45 +106,63 @@ def criar_pedido(p_in: schemas.PedidoCreate, db: Session = Depends(database.get_
 
 @router.get("/pedidos/ativos")
 def listar_ativos(db: Session = Depends(database.get_db)):
-    q = db.query(models.Pedido).filter(models.Pedido.status.notin_(["Finalizado", "Cancelado"])).order_by(models.Pedido.data_hora_criacao.asc()).all()
-    res = []
-    for p in q:
-        itens = []
-        for it in p.itens:
-            d = {"tipo": it.tipo_item.lower(), "quantidade": 1, "preco_unitario": float(it.preco_unitario_vendido), "observacao": it.observacao}
-            if it.tipo_item == 'Pizza':
-                d["detalhes_pizza"] = {
-                    "tamanho": it.detalhe_pizza.tamanho.nome_tamanho,
-                    "borda": it.detalhe_pizza.borda.tipo if it.detalhe_pizza.borda else "Sem Borda",
-                    "sabores": [s.sabor.nome_sabor for s in it.detalhe_pizza.sabores]
+    try:
+        q = db.query(models.Pedido).filter(models.Pedido.status.notin_(["Finalizado", "Cancelado"])).order_by(models.Pedido.data_hora_criacao.asc()).all()
+        res = []
+        for p in q:
+            itens = []
+            for it in p.itens:
+                tipo = (it.tipo_item or "Produto").lower()
+                d = {
+                    "id_item": it.id_item,
+                    "tipo": tipo,
+                    "quantidade": it.quantidade or 1,
+                    "preco_unitario": float(it.preco_unitario_vendido or 0),
+                    "observacao": it.observacao
                 }
-            else:
-                d["nome"] = it.bebida.produto.nome if it.bebida else "Produto"
-            itens.append(d)
-        
-        res.append({
-            "id_pedido": p.id_pedido,
-            "status": p.status,
-            "data_hora": p.data_hora_criacao,
-            "valor_total": float(p.valor_total),
-            "taxa_entrega": float(p.taxa_entrega or 0),
-            "endereco": f"{p.endereco.logradouro}, {p.endereco.numero}" if p.endereco else "Balcão",
-            "cliente_nome": p.cliente.pessoa.nome if p.cliente else "Visitante",
-            "itens": itens,
-            "pagamentos": [{"forma": pag.forma_pagamento, "valor": float(pag.valor_pago)} for pag in p.pagamentos],
-            "troco": float(p.troco or 0)
-        })
-    return res
+                
+                if tipo == 'pizza' and it.detalhe_pizza:
+                    d["detalhes_pizza"] = {
+                        "tamanho": it.detalhe_pizza.tamanho.nome_tamanho if it.detalhe_pizza.tamanho else "N/A",
+                        "borda": it.detalhe_pizza.borda.tipo if it.detalhe_pizza.borda else "Sem Borda",
+                        "sabores": [s.sabor.nome_sabor for s in it.detalhe_pizza.sabores if s.sabor]
+                    }
+                else:
+                    # Tenta pegar nome via relacionamento bebida ou via produto genérico
+                    if it.bebida and it.bebida.produto:
+                        d["nome"] = it.bebida.produto.nome
+                    elif it.produto:
+                        d["nome"] = it.produto.nome
+                    else:
+                        d["nome"] = "Produto"
+                itens.append(d)
+            
+            res.append({
+                "id_pedido": p.id_pedido,
+                "status": str(p.status),
+                "data_hora": p.data_hora_criacao.isoformat() if p.data_hora_criacao else None,
+                "valor_total": float(p.valor_total or 0),
+                "taxa_entrega": float(p.taxa_entrega or 0),
+                "endereco": f"{p.endereco.logradouro}, {p.endereco.numero}" if p.endereco else "Balcão",
+                "cliente_nome": p.cliente.pessoa.nome if p.cliente and p.cliente.pessoa else "Visitante",
+                "itens": itens,
+                "pagamentos": [{"forma": pag.forma_pagamento, "valor": float(pag.valor_pago)} for pag in p.pagamentos],
+                "troco": float(p.troco or 0)
+            })
+        return res
+    except Exception as e:
+        print(f"Erro em listar_ativos: {e}")
+        raise HTTPException(500, f"Erro interno ao listar pedidos: {str(e)}")
 
 @router.get("/pedidos/historico_dia")
 def historico_dia(db: Session = Depends(database.get_db)):
     q = db.query(models.Pedido).filter(models.Pedido.status.in_(["Finalizado", "Cancelado"]), func.date(models.Pedido.data_hora_criacao) == func.current_date()).all()
     return [{
-        "id": p.id_pedido,
-        "cliente": p.cliente.pessoa.nome if p.cliente else "Balcão",
-        "total": float(p.valor_total),
-        "status": p.status,
-        "hora": p.data_hora_criacao.strftime("%H:%M")
+        "id_pedido": p.id_pedido,
+        "cliente": p.cliente.pessoa.nome if p.cliente and p.cliente.pessoa else "Balcão",
+        "valor_total": float(p.valor_total or 0),
+        "status": str(p.status),
+        "hora": p.data_hora_criacao.strftime("%H:%M") if p.data_hora_criacao else "--:--"
     } for p in q]
 
 @router.get("/pedidos/{id_pedido}")
@@ -148,25 +172,41 @@ def detalhes_pedido(id_pedido: int, db: Session = Depends(database.get_db)):
     
     itens = []
     for it in p.itens:
-        d = {"tipo": it.tipo_item.lower(), "quantidade": 1, "preco_unitario": float(it.preco_unitario_vendido), "observacao": it.observacao}
-        if it.tipo_item == 'Pizza':
+        tipo = (it.tipo_item or "Produto").lower()
+        d = {
+            "id_item": it.id_item,
+            "tipo": tipo,
+            "quantidade": it.quantidade or 1,
+            "preco_unitario": float(it.preco_unitario_vendido or 0),
+            "observacao": it.observacao
+        }
+        if tipo == 'pizza' and it.detalhe_pizza:
             d["detalhes_pizza"] = {
-                "tamanho": it.detalhe_pizza.tamanho.nome_tamanho,
+                "tamanho": it.detalhe_pizza.tamanho.nome_tamanho if it.detalhe_pizza.tamanho else "N/A",
                 "borda": it.detalhe_pizza.borda.tipo if it.detalhe_pizza.borda else "Sem Borda",
-                "sabores": [s.sabor.nome_sabor for s in it.detalhe_pizza.sabores]
+                "sabores": [s.sabor.nome_sabor for s in it.detalhe_pizza.sabores if s.sabor]
             }
         else:
-            d["nome"] = it.bebida.produto.nome if it.bebida else "Bebida"
+            if it.bebida and it.bebida.produto:
+                d["nome"] = it.bebida.produto.nome
+            elif it.produto:
+                d["nome"] = it.produto.nome
+            else:
+                d["nome"] = "Produto"
         itens.append(d)
 
     return {
         "id_pedido": p.id_pedido,
-        "status": p.status,
-        "data_hora": p.data_hora_criacao,
-        "valor_total": float(p.valor_total),
+        "status": str(p.status),
+        "data_hora": p.data_hora_criacao.isoformat() if p.data_hora_criacao else None,
+        "valor_total": float(p.valor_total or 0),
         "taxa_entrega": float(p.taxa_entrega or 0),
         "endereco": f"{p.endereco.logradouro}, {p.endereco.numero} ({p.endereco.bairro})" if p.endereco else "Balcão",
-        "cliente_nome": p.cliente.pessoa.nome if p.cliente else "Visitante",
+        "cliente": {
+            "nome": p.cliente.pessoa.nome if p.cliente and p.cliente.pessoa else "Visitante",
+            "cpf": p.id_cliente or "---"
+        },
+        "cliente_nome": p.cliente.pessoa.nome if p.cliente and p.cliente.pessoa else "Visitante",
         "itens": itens,
         "pagamentos": [{"forma": pag.forma_pagamento, "valor": float(pag.valor_pago)} for pag in p.pagamentos],
         "troco": float(p.troco or 0)
@@ -176,6 +216,15 @@ def detalhes_pedido(id_pedido: int, db: Session = Depends(database.get_db)):
 def atualizar_status_pedido(id: int, status: str, db: Session = Depends(database.get_db)):
     pedido = db.get(models.Pedido, id)
     if not pedido: raise HTTPException(404, "Pedido não encontrado")
+    
+    # Se estiver cancelando, devolve estoque de bebidas
+    if status == "Cancelado" and pedido.status != "Cancelado":
+        for it in pedido.itens:
+            if it.tipo_item.lower() == 'bebida' or (it.produto and it.produto.tipo_produto == 'Bebida'):
+                bebida = db.query(models.Bebida).filter_by(id_bebida=it.id_produto).first()
+                if bebida:
+                    bebida.quantidade += (it.quantidade or 1)
+                    
     pedido.status = status
     db.commit()
     return {"status": "sucesso"}

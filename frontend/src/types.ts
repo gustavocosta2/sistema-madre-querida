@@ -73,7 +73,7 @@ export interface Funcionario {
     nome: string;
     cargo: string;
     salario: number;
-    ativo: bool;
+    ativo: boolean;
     placa_veiculo?: string;
 }
 

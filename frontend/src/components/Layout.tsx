@@ -15,7 +15,7 @@ export function Layout({ children, view, setView, user, onLogout }: LayoutProps)
     { id: 'pdv', label: 'Vender' },
     { id: 'cozinha', label: 'Cozinha' },
     { id: 'entregas', label: 'Entregas' },
-    { id: 'financeiro', label: 'Financeiro', adminOnly: true },
+    { id: 'financeiro', label: 'Financeiro' },
     { id: 'historico', label: 'Histórico' },
     { id: 'gestao', label: 'Gestão', adminOnly: true },
   ];

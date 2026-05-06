@@ -10,6 +10,7 @@ const Financeiro: React.FC = () => {
   const [valorMovimentacao, setValorMovimentacao] = useState('');
   const [descMovimentacao, setDescMovimentacao] = useState('');
   const [loading, setLoading] = useState(true);
+  const [resumoFechamento, setResumoFechamento] = useState<any>(null);
 
   const fetchStatus = async () => {
     setLoading(true);
@@ -81,7 +82,8 @@ const Financeiro: React.FC = () => {
         valor_fechamento_informado: valor,
         observacao: "Fechamento manual"
       });
-      alert(`Caixa fechado!\nEsperado: R$ ${res.data.esperado.toFixed(2)}\nInformado: R$ ${res.data.informado.toFixed(2)}\nDiferença: R$ ${res.data.diferenca.toFixed(2)}`);
+      setResumoFechamento(res.data);
+      setValorFechamento('');
       fetchStatus();
     } catch (error: any) {
       alert(error.response?.data?.detail?.[0]?.msg || error.response?.data?.detail || "Erro ao fechar caixa");
@@ -207,6 +209,36 @@ const Financeiro: React.FC = () => {
                 REGISTRAR MOVIMENTAÇÃO
               </button>
             </div>
+
+            {/* LISTA DE MOVIMENTAÇÕES (EXTRATO) */}
+            <div className="space-y-4 pt-6 border-t border-gray-100">
+                <h3 className="font-bold text-gray-700 flex items-center gap-2">
+                    <ClipboardList className="text-gray-400" size={18} /> EXTRATO DO TURNO (HOJE)
+                </h3>
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                    {caixaStatus.movimentacoes?.length === 0 ? (
+                        <p className="text-xs text-gray-400 italic py-4 text-center">Nenhuma movimentação registrada até o momento.</p>
+                    ) : (
+                        caixaStatus.movimentacoes.map((m: any) => (
+                            <div key={m.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                <div className="flex items-center gap-3">
+                                    <span className={`w-2 h-2 rounded-full ${m.tipo === 'Sangria' || m.tipo === 'Acerto Motoboy' ? 'bg-red-500' : 'bg-green-500'}`}></span>
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase text-gray-900 leading-none">{m.tipo}</p>
+                                        <p className="text-[9px] text-gray-400 mt-1">{m.hora} • {m.descricao || 'Sem descrição'}</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className={`text-xs font-black ${m.tipo === 'Sangria' || m.tipo === 'Acerto Motoboy' ? 'text-red-600' : 'text-green-600'}`}>
+                                        {m.tipo === 'Sangria' || m.tipo === 'Acerto Motoboy' ? '-' : '+'} R$ {m.valor.toFixed(2)}
+                                    </p>
+                                    <p className="text-[8px] font-bold text-gray-300 uppercase">{m.forma}</p>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </div>
           </div>
 
           {/* Fechamento */}
@@ -238,6 +270,56 @@ const Financeiro: React.FC = () => {
             >
               ENCERRAR EXPEDIENTE
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE RESUMO DE FECHAMENTO */}
+      {resumoFechamento && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-6 z-[100]">
+          <div className="bg-white w-full max-w-lg rounded-[3rem] shadow-2xl overflow-hidden border-8 border-gray-100 animate-in zoom-in-95 duration-300">
+            <div className={`p-10 text-white text-center ${resumoFechamento.diferenca === 0 ? 'bg-emerald-600' : (resumoFechamento.diferenca > 0 ? 'bg-blue-600' : 'bg-red-600')}`}>
+              <CheckCircle size={60} className="mx-auto mb-4" />
+              <h2 className="text-3xl font-black uppercase italic leading-none">Turno Encerrado</h2>
+              <p className="text-[10px] font-black uppercase tracking-widest mt-2 opacity-80">Relatório de Conferência</p>
+            </div>
+
+            <div className="p-10 space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                  <p className="text-[9px] font-black text-gray-400 uppercase">Total Esperado</p>
+                  <p className="text-xl font-black text-gray-900">R$ {resumoFechamento.esperado_total.toFixed(2)}</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                  <p className="text-[9px] font-black text-gray-400 uppercase">Total Informado</p>
+                  <p className="text-xl font-black text-gray-900">R$ {resumoFechamento.informado.toFixed(2)}</p>
+                </div>
+              </div>
+
+              <div className={`p-6 rounded-2xl border-4 flex justify-between items-center ${resumoFechamento.diferenca === 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : (resumoFechamento.diferenca > 0 ? 'bg-blue-50 border-blue-100 text-blue-700' : 'bg-red-50 border-red-100 text-red-700')}`}>
+                <p className="font-black uppercase text-xs tracking-widest">Diferença Final</p>
+                <p className="text-3xl font-black italic">R$ {resumoFechamento.diferenca.toFixed(2)}</p>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-[10px] font-black text-gray-400 uppercase border-b border-gray-100 pb-2">Resumo por Forma de Pagamento</p>
+                <div className="space-y-2">
+                   {Object.entries(resumoFechamento.breakdown).map(([forma, valor]: [any, any]) => (
+                     <div key={forma} className="flex justify-between items-center text-xs font-bold text-gray-600">
+                        <span className="uppercase">{forma}</span>
+                        <span>R$ {valor.toFixed(2)}</span>
+                     </div>
+                   ))}
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setResumoFechamento(null)}
+                className="w-full mt-4 bg-gray-900 hover:bg-black text-white font-black py-5 rounded-[2rem] shadow-xl transition-all uppercase tracking-widest text-xs"
+              >
+                ENTENDIDO, CONCLUIR
+              </button>
+            </div>
           </div>
         </div>
       )}

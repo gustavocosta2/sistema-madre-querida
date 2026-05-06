@@ -96,6 +96,7 @@ class ItemPedidoCreate(BaseModel):
     sabores: Optional[List[int]] = []
     id_tamanho: Optional[int] = None
     id_borda: Optional[int] = None
+    quantidade: int = 1
     preco: Decimal
     observacao: Optional[str] = None
 

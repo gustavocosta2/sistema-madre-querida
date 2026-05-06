@@ -7,7 +7,7 @@
 
 ---
 
-## 1. Domínios de Dados (Enums)
+## 1. Domínios de Dados (Enums / Tipos)
 
 ### `status_pedido_enum`
 Controla os estados válidos de um pedido no fluxo operacional.
@@ -29,107 +29,156 @@ Identifica o canal de entrada da venda para análise de conversão.
 
 ## 2. Estrutura das Tabelas
 
-### 2.1 Módulo de Identificação
+### 2.1 Módulo de Identificação e Segurança
 
 #### Tabela: `pessoas`
 Raiz da generalização de seres humanos no sistema.
-*   **`cpf`** (VARCHAR(14)): **PK**. Identificador único nacional. Garante que uma mesma pessoa não tenha dois cadastros (como cliente e funcionário) sem histórico unificado.
-*   **`nome`** (VARCHAR(100)): **NOT NULL**. Nome completo ou social para tratamento e emissão de notas.
-*   **`criado_em`** (TIMESTAMPTZ): Data/hora de entrada no sistema para análise de tempo de casa ou fidelidade.
+*   **`cpf`** (VARCHAR(14)): **PK**. Identificador único nacional. Garante histórico unificado.
+*   **`nome`** (VARCHAR(100)): **NOT NULL**. Nome completo.
+*   **`data_nascimento`** (DATE): Data para CRM e fidelidade.
+*   **`criado_em`** (TIMESTAMPTZ): Data de entrada no sistema.
+
+#### Tabela: `usuarios`
+Contas de acesso ao sistema.
+*   **`id_usuario`** (SERIAL): **PK**.
+*   **`username`** (VARCHAR(50)): **UNIQUE / NOT NULL**.
+*   **`senha_hash`** (VARCHAR(255)): PBKDF2.
+*   **`role`** (VARCHAR(20)): 'admin' ou 'funcionario'.
+*   **`ativo`** (BOOLEAN): Controle de acesso.
+*   **`ultima_login`** (TIMESTAMPTZ): Registro do último acesso bem-sucedido.
 
 #### Tabela: `telefones_pessoa`
-Implementação do atributo multivalorado para contatos.
-*   **`id_telefone`** (SERIAL): **PK**. Identificador técnico do registro.
-*   **`cpf_pessoa`** (VARCHAR(14)): **FK** para `pessoas`. Vincula o número ao dono.
-*   **`numero`** (VARCHAR(20)): **NOT NULL**. O número com DDD. Crucial para o motoboy contatar o cliente na entrega.
-*   **`e_principal`** (BOOLEAN): Define qual telefone exibir como destaque na tela de vendas.
+*   **`id_telefone`** (SERIAL): **PK**.
+*   **`cpf_pessoa`** (VARCHAR(14)): **FK** para `pessoas`.
+*   **`numero`** (VARCHAR(20)): **NOT NULL**.
+*   **`e_principal`** (BOOLEAN): Destaque no PDV.
 
 #### Tabela: `enderecos_pessoa`
-Entidade fraca que suporta múltiplos locais de entrega.
-*   **`id_endereco`** (SERIAL): **PK**. Identificador do local.
-*   **`cpf_pessoa`** (VARCHAR(14)): **FK** para `pessoas`. Define a quem pertence o endereço.
-*   **`logradouro`** (VARCHAR(100)): Nome da rua/avenida.
-*   **`ponto_referencia`** (TEXT): Contexto crucial para cidades com endereçamento complexo.
-*   **`e_principal`** (BOOLEAN): Marca o endereço padrão para acelerar o processo de venda.
+*   **`id_endereco`** (SERIAL): **PK**.
+*   **`cpf_pessoa`** (VARCHAR(14)): **FK** para `pessoas`.
+*   **`logradouro`** (VARCHAR(100)): Rua/Avenida.
+*   **`numero`** (VARCHAR(10)): Número ou S/N.
+*   **`bairro`** (VARCHAR(50)): Bairro para logística.
+*   **`ponto_referencia`** (TEXT): Apoio ao motoboy.
+*   **`e_principal`** (BOOLEAN): Endereço padrão.
 
 ---
 
 ### 2.2 Módulo de CRM e Recursos Humanos
 
 #### Tabela: `clientes`
-Especialização da entidade Pessoa focada em consumo.
-*   **`cpf_cliente`** (VARCHAR(14)): **PK / FK** para `pessoas`. Herança dos dados básicos.
-*   **`saldo_pontos`** (INTEGER): Acúmulo de pontos ganhos em compras pagas para trocas futuras.
-*   **`ultima_visita`** (TIMESTAMPTZ): Registro automático da última compra para fins de marketing.
+*   **`cpf_cliente`** (VARCHAR(14)): **PK / FK** para `pessoas`.
+*   **`saldo_pontos`** (INTEGER): Acúmulo de fidelidade.
+*   **`observacao`** (TEXT): Notas de preferência do cliente.
+*   **`ativo`** (BOOLEAN): Status do cliente na base.
+*   **`ultima_visita`** (TIMESTAMPTZ): Automatizado pela última venda.
 
 #### Tabela: `funcionarios`
-Especialização da entidade Pessoa focada em operação.
-*   **`cpf_funcionario`** (VARCHAR(14)): **PK / FK** para `pessoas`. Herança dos dados básicos.
-*   **`cargo`** (VARCHAR(50)): Função (Atendente, Pizzaiolo, Gerente).
-*   **`salario`** (NUMERIC(10,2)): Valor base da remuneração mensal.
+*   **`cpf_funcionario`** (VARCHAR(14)): **PK / FK** para `pessoas`.
+*   **`cargo`** (VARCHAR(50)): Função na pizzaria.
+*   **`salario`** (NUMERIC(10,2)): Valor bruto mensal.
+*   **`data_admissao`** (DATE): Data de contratação.
+*   **`ativo`** (BOOLEAN): Vínculo ativo/inativo.
 
 #### Tabela: `motoboys`
-Especialização de Funcionário focada em logística.
-*   **`cpf_motoboy`** (VARCHAR(14)): **PK / FK** para `funcionarios`. Herança total.
-*   **`placa_veiculo`** (VARCHAR(10)): Identificação da moto para segurança e triagem.
-*   **`tipo_vinculo`** (VARCHAR(20)): 'Próprio' ou 'Freelancer'. Define se o motoboy recebe por dia ou por entrega.
+*   **`cpf_motoboy`** (VARCHAR(14)): **PK / FK** para `funcionarios`.
+*   **`placa_veiculo`** (VARCHAR(10)): Identificação da moto.
+*   **`tipo_vinculo`** (VARCHAR(20)): 'Próprio' ou 'Freelancer'.
 
 ---
 
 ### 2.3 Módulo de Catálogo e Precificação
 
 #### Tabela: `produtos`
-Entidade base para qualquer item vendável (Pizza, Bebida, etc).
-*   **`id_produto`** (SERIAL): **PK**. Identificador global do item.
-*   **`nome`** (VARCHAR(100)): Nome comercial (Ex: "Pizza de Calabresa", "Coca-Cola").
-*   **`tipo_produto`** (VARCHAR(20)): Metadado que define o comportamento do item no sistema (P, B ou A).
-*   **`preco_pontos`** (INTEGER): Custo em pontos para resgate via programa de fidelidade.
+*   **`id_produto`** (SERIAL): **PK**.
+*   **`nome`** (VARCHAR(100)): Nome comercial.
+*   **`tipo_produto`** (VARCHAR(20)): 'Pizza', 'Bebida', 'Acompanhamento'.
+*   **`preco_pontos`** (INTEGER): Custo para resgate fidelidade.
 
 #### Tabela: `bebidas`
-Especialização de Produto com atributos específicos de inventário.
 *   **`id_bebida`** (INT): **PK / FK** para `produtos`.
-*   **`volume_ml`** (INT): Capacidade da embalagem. Diferencia "Lata 350ml" de "Garrafa 2L".
-*   **`preco_venda`** (NUMERIC(10,2)): Valor de venda padrão. **CHECK >= 0**.
-*   **`quantidade`** (INT): **Estoque Atual**. Quantidade física disponível. **CHECK >= 0** para evitar vendas de itens inexistentes.
+*   **`volume_ml`** (INT): Capacidade.
+*   **`preco_venda`** (NUMERIC(10,2)): Preço unitário.
+*   **`quantidade`** (INT): **Estoque Atual**.
+
+#### Tabela: `sabores`
+*   **`id_sabor`** (INT): **PK**.
+*   **`nome_sabor`** (VARCHAR(50)): Nome da pizza.
+*   **`ingredientes`** (TEXT): Composição detalhada.
+*   **`disponivel`** (BOOLEAN): Status de venda.
+*   **`preco_pontos`** (INTEGER): Custo de resgate do sabor.
 
 #### Tabela: `precificado`
-Relacionamento N:M entre Sabor e Tamanho com atributo de valor.
-*   **`id_sabor`** (INT): **PK / FK** para `sabores`.
-*   **`id_tamanho`** (INT): **PK / FK** para `tamanhos`.
-*   **`preco_base`** (NUMERIC(10,2)): O valor da pizza. **Contexto:** Numa pizzaria, o preço não é do sabor nem do tamanho, mas do cruzamento de ambos.
+*   **`id_sabor`** (INT): **PK / FK**.
+*   **`id_tamanho`** (INT): **PK / FK**.
+*   **`preco_base`** (NUMERIC(10,2)): Valor da combinação Sabor/Tamanho.
 
 ---
 
 ### 2.4 Módulo de Vendas e Operação
 
 #### Tabela: `pedidos`
-Entidade central que registra o ato da venda.
-*   **`id_pedido`** (SERIAL): **PK**. Número da comanda.
-*   **`id_cliente`** (VARCHAR(14)): **FK** para `clientes`. Quem está comprando.
-*   **`id_motoboy`** (VARCHAR(14)): **FK** para `motoboys`. **Atributo do relacionamento Entrega**. Define quem levará o produto.
-*   **`status`** (status_pedido_enum): Estado atual no ciclo de vida.
-*   **`valor_total`** (NUMERIC(10,2)): Valor líquido final. **CHECK >= 0**.
-*   **`valor_recebido`** (NUMERIC(10,2)): Quanto o cliente deu em mãos. Crucial para o cálculo de troco.
-*   **`troco`** (NUMERIC(10,2)): Valor que o motoboy deve devolver. **CHECK >= 0**.
-*   **`taxa_entrega`** (NUMERIC(10,2)): **Atributo do relacionamento Entrega**. Custo do deslocamento.
-*   **`quilometragem`** (NUMERIC(10,2)): **Atributo do relacionamento Entrega**. Distância para cálculo de produtividade e desgaste.
+*   **`id_pedido`** (SERIAL): **PK**.
+*   **`id_cliente`** (VARCHAR(14)): **FK** para `clientes`.
+*   **`id_endereco_entrega`** (INT): **FK** para `enderecos_pessoa`.
+*   **`id_motoboy`** (VARCHAR(14)): **FK** para `motoboys`.
+*   **`status`** (status_pedido_enum): Estado operacional.
+*   **`valor_total`** (NUMERIC(10,2)): Total líquido.
+*   **`valor_recebido`** (NUMERIC(10,2)): Dinheiro em mãos.
+*   **`troco`** (NUMERIC(10,2)): Devolução calculada.
+*   **`taxa_entrega`** (NUMERIC(10,2)): Custo do frete.
+*   **`quilometragem`** (NUMERIC(10,2)): Distância da entrega.
+*   **`pontos_resgatados`** (INTEGER): Pontos usados como desconto.
+*   **`origem`** (origem_pedido_enum): Canal de entrada.
+*   **`data_hora_criacao`** (TIMESTAMPTZ): Registro inicial.
 
 #### Tabela: `itens_pedido`
-Linhas individuais de cada produto dentro de uma comanda.
-*   **`id_item`** (SERIAL): **PK**. Identificador da linha.
-*   **`id_pedido`** (INT): **FK** para `pedidos`. Agrupador da comanda.
-*   **`preco_unitario_vendido`** (NUMERIC(10,2)): **Imutabilidade**. Congela o preço no ato da venda para proteger o histórico financeiro contra reajustes futuros do cardápio.
-*   **`observacao`** (TEXT): Customização do item (Ex: "sem cebola"). Instrução para a cozinha.
+*   **`id_item`** (SERIAL): **PK**.
+*   **`id_pedido`** (INT): **FK** para `pedidos`.
+*   **`id_produto`** (INT): **FK** para `produtos`.
+*   **`tipo_item`** (VARCHAR(20)): 'Pizza' ou 'Bebida'.
+*   **`quantidade`** (INTEGER): Unidades vendidas.
+*   **`preco_unitario_vendido`** (NUMERIC(10,2)): **Imutabilidade**.
+*   **`observacao`** (TEXT): Notas do item.
+
+#### Tabela: `item_pizza_detalhe`
+*   **`id_item`** (INT): **PK / FK** para `itens_pedido`.
+*   **`id_tamanho`** (INT): **FK** para `tamanhos`.
+*   **`id_borda`** (INT): **FK** para `bordas`.
 
 #### Tabela: `pizza_sabores`
-Relacionamento N:M que resolve o fracionamento de pizzas.
-*   **`id_item`** (INT): **PK / FK** para `itens_pedido`.
+*   **`id_item`** (INT): **PK / FK** para `item_pizza_detalhe`.
 *   **`id_sabor`** (INT): **PK / FK** para `sabores`.
-*   **`fracao`** (NUMERIC(3,2)): Define a proporção do sabor. Ex: 1.00 (inteira), 0.50 (meia), 0.33 (um terço).
+*   **`fracao`** (NUMERIC(3,2)): Proporção (0.50, 1.00, etc).
 
-#### Tabela: `historico_status_pedido`
-Entidade fraca de auditoria (O "Filme").
-*   **`id_historico`** (SERIAL): **PK**.
-*   **`status`** (status_pedido_enum): Estado para o qual o pedido mudou.
-*   **`data_hora`** (TIMESTAMPTZ): Carimbo de tempo preciso. Permite calcular o tempo médio de cada etapa (cozinha, entrega).
-*   **`observacao`** (TEXT): Motivo da mudança. Essencial em casos de 'Cancelado'.
+#### Tabela: `pagamentos`
+*   **`id_transacao`** (SERIAL): **PK**.
+*   **`id_pedido`** (INT): **FK** para `pedidos`.
+*   **`forma_pagamento`** (VARCHAR(30)): Dinheiro, Pix, Cartão.
+*   **`valor_pago`** (NUMERIC(10,2)): Valor da parcela.
+
+---
+
+### 2.5 Módulo Financeiro e Auditoria
+
+#### Tabela: `caixas`
+*   **`id_caixa`** (SERIAL): **PK**.
+*   **`id_usuario_abertura`** (INT): **FK** para `usuarios`.
+*   **`id_usuario_fechamento`** (INT): **FK** para `usuarios`.
+*   **`data_abertura`** (TIMESTAMPTZ): Início do turno.
+*   **`data_fechamento`** (TIMESTAMPTZ): Fim do turno.
+*   **`valor_abertura`** (NUMERIC(10,2)): Fundo de troco.
+*   **`valor_fechamento_esperado`** (NUMERIC(10,2)): Calculado pelo sistema.
+*   **`valor_fechamento_informado`** (NUMERIC(10,2)): Contagem física.
+*   **`status`** (VARCHAR(20)): 'Aberto' ou 'Fechado'.
+*   **`observacao`** (TEXT): Ocorrências do turno.
+
+#### Tabela: `fluxo_caixa`
+*   **`id_movimentacao`** (SERIAL): **PK**.
+*   **`id_caixa`** (INT): **FK** para `caixas`.
+*   **`id_pedido`** (INT): **FK** para `pedidos`. (Opcional, se for venda).
+*   **`tipo_movimentacao`** (VARCHAR(20)): 'Venda', 'Suprimento', 'Sangria'.
+*   **`forma_pagamento`** (VARCHAR(30)): Origem do valor.
+*   **`valor`** (NUMERIC(10,2)): Valor do lançamento.
+*   **`descricao`** (TEXT): Motivo detalhado.
+*   **`data_hora`** (TIMESTAMPTZ): Carimbo do registro.

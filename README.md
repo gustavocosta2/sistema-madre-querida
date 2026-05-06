@@ -15,7 +15,7 @@ O sistema utiliza uma arquitetura Client-Server modularizada, otimizada para des
 -   **Frontend:** Aplicação SPA construída com **React 19** e **TypeScript**.
     -   **Gerenciamento de Estado:** React Context API (MadreContext) para dados globais.
     -   **Modularidade:** Decomposição em subcomponentes atômicos para facilidade de manutenção.
-    -   **UI/UX:** Estilização com **Tailwind CSS 4** seguindo o padrão *Enterprise Polish* (ergonomia visual e sombras profundas).
+    -   **UI/UX:** Estilização com **Tailwind CSS 4** focada em ergonomia visual, clareza e agilidade operacional.
 -   **Infraestrutura:** Totalmente conteinerizado com **Docker** e **Docker Compose**, garantindo paridade entre ambientes de desenvolvimento e produção.
 
 ---

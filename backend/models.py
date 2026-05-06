@@ -10,6 +10,7 @@ class Usuario(Base):
     senha_hash = Column(String(255), nullable=False)
     role = Column(String(20), default="funcionario") 
     ativo = Column(Boolean, default=True)
+    ultima_login = Column(DateTime(timezone=True))
 
 # --- MÓDULO DE PESSOAS ---
 class Pessoa(Base):
@@ -51,6 +52,7 @@ class Funcionario(Base):
     cpf_funcionario = Column(String(14), ForeignKey("pessoas.cpf"), primary_key=True)
     cargo = Column(String(50))
     salario = Column(Numeric(10,2))
+    data_admissao = Column(Date, server_default=func.current_date())
     ativo = Column(Boolean, default=True)
 
     pessoa = relationship("Pessoa")
@@ -69,6 +71,7 @@ class Cliente(Base):
     saldo_pontos = Column(Integer, default=0)
     ultima_visita = Column(DateTime(timezone=True))
     observacao = Column(Text, nullable=True)
+    ativo = Column(Boolean, default=True)
     
     pessoa = relationship("Pessoa")
 
@@ -156,6 +159,7 @@ class Pedido(Base):
     troco = Column(Numeric(10, 2), default=0.00)
     taxa_entrega = Column(Numeric(10, 2), default=0.00)
     quilometragem = Column(Numeric(10, 2), default=0.00)
+    pontos_resgatados = Column(Integer, default=0)
     data_hora_criacao = Column(DateTime(timezone=True), server_default=func.now())
 
     itens = relationship("ItemPedido", back_populates="pedido")
@@ -188,12 +192,14 @@ class ItemPedido(Base):
     id_item = Column(Integer, primary_key=True, index=True)
     id_pedido = Column(Integer, ForeignKey("pedidos.id_pedido"))
     id_produto = Column(Integer, ForeignKey("produtos.id_produto"))
+    tipo_item = Column(String(20)) # 'Pizza' ou 'Bebida'
     quantidade = Column(Integer, default=1)
     preco_unitario_vendido = Column(Numeric(10, 2), nullable=False)
     observacao = Column(Text, nullable=True)
 
     pedido = relationship("Pedido", back_populates="itens")
     produto = relationship("Produto")
+    bebida = relationship("Bebida", primaryjoin="ItemPedido.id_produto == Bebida.id_bebida", foreign_keys="[Bebida.id_bebida]", viewonly=True, uselist=False)
     detalhe_pizza = relationship("ItemPizzaDetalhe", uselist=False, back_populates="item")
 
 class PizzaSabor(Base):

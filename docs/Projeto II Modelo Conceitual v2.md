@@ -13,116 +13,156 @@ Este documento detalha a modelagem conceitual da base de dados da pizzaria Madre
 * **Pedido**: Entidade que centraliza a venda.
     * `ID_Pedido` (PK)
     * `Data_Hora_Criacao`: Registro de entrada do pedido.
-    * `Status`: Estado atual (Enum: Recebido, Preparo, Rota, Finalizado, etc).
-    * `Valor_Total`: Soma dos itens e taxa de entrega.
-    * `Valor_Recebido`: Valor dado pelo cliente.
-    * `Troco`: Troco em reais fornecido ao cliente caso seja necessário.
-    * `Origem`: Canal de venda (WhatsApp, Balcão, iFood).
+    * `Status`: Estado atual (Enum: Recebido, Preparo, Aguardando Entrega, Em Rota, Finalizado, Cancelado).
+    * `Valor_Total`: Soma líquida dos itens e taxa de entrega.
+    * `Valor_Recebido`: Valor bruto dado pelo cliente em mãos.
+    * `Troco`: Diferença a ser devolvida ao cliente (calculado: Valor_Recebido - Valor_Total).
+    * `Taxa_Entrega`: Custo logístico do deslocamento.
+    * `Quilometragem`: Distância percorrida para a entrega.
+    * `Pontos_Resgatados`: Quantidade de pontos de fidelidade utilizados como desconto nesta venda.
+    * `Origem`: Canal de venda (WhatsApp, Balcão, iFood, Telefone).
 
 * **Historico_Status**: Entidade **fraca** que registra o "ciclo de vida" do pedido.
+    * `ID_Historico` (PK)
     * `Status`: O estado para o qual o pedido mudou.
     * `Data_Hora_Mudanca`: Carimbo de tempo preciso da mudança.
     * `Observacao`: Motivo de cancelamentos ou atrasos.
 
-### 2.2 Gestão de Pessoas
+### 2.2 Gestão de Pessoas e Segurança
 * **Pessoa (Generalização)**: Base para Clientes e Funcionários.
-    * `CPF`: (PK), 
-    * `Nome`: Nome da pessoa,
-    * `Endereços`: (Atributo Multivalorado) Representa os múltiplos locais de entrega que uma pessoa pode possuir.
-    * `Telefone`: (Atributo Multivalorado) Representa os múltiplos telefones que uma pessoa pode ter.
+    * `CPF`: (PK), Identificador único nacional.
+    * `Nome`: Nome completo.
+    * `Data_Nascimento`: Data para CRM e alertas de aniversário.
+    * `Criado_Em`: Data de cadastro inicial.
+
+* **Endereço**: Entidade que suporta múltiplos locais de entrega.
+    * `ID_Endereco` (PK)
+    * `Logradouro`: Nome da rua/avenida.
+    * `Numero`: Número da residência.
+    * `Bairro`: Região para cálculo de taxas.
+    * `CEP`: Código postal.
+    * `Ponto_Referencia`: Contexto para o entregador.
+    * `E_Principal`: Define o endereço padrão do cliente.
+
+* **Telefone**: Registro de contatos.
+    * `ID_Telefone` (PK)
+    * `Numero`: DDD + Número.
+    * `E_Principal`: Indica o telefone de contato preferencial.
+
+* **Usuario**: Identidade de acesso ao sistema.
+    * `ID_Usuario` (PK)
+    * `Username`: Nome de login único.
+    * `Senha_Hash`: Senha criptografada.
+    * `Role`: Nível de acesso (Admin ou Funcionario).
+    * `Ativo`: Status de permissão de login.
+    * `Ultima_Login`: Registro cronológico do último acesso.
 
 * **Cliente / Funcionario / Motoboy (Especializações)**:
-    * `Cliente`: 
-        * `Saldo_Pontos`: Quantidade de pontos que um cliente tem (programa de fidelidade).
-    * `Funcionario`: 
-        * `Cargo`: Cargo que um cliente ocupa na unidade de negócio. 
-        * `Salario`: Salário que um funcionário possui na unidade de negócio. 
-        * `Ativo`: Se o funcionário está ativo ou não.
-    
-    * `Motoboy`: 
-        * `Placa_Veiculo`: Placa do veículo. 
-        * `Tipo_Vinculo`: Se o motoboy é um funcionário fichado ou freelancer.
+    * **Cliente**: 
+        * `Saldo_Pontos`: Acúmulo de pontos fidelidade.
+        * `Observacao`: Notas de CRM (Preferências, alergias).
+        * `Ativo`: Se o cliente está apto para compras.
+        * `Ultima_Visita`: Data da última compra realizada.
+    * **Funcionario**: 
+        * `Cargo`: Função ocupada (Pizzaiolo, Atendente, etc). 
+        * `Salario`: Remuneração base. 
+        * `Data_Admissao`: Data de entrada na equipe.
+        * `Ativo`: Status de vínculo com a empresa.
+    * **Motoboy**: 
+        * `Placa_Veiculo`: Identificação do veículo de entrega. 
+        * `Tipo_Vinculo`: Próprio ou Freelancer.
 
 ### 2.3 Catálogo e Itens
-* **Produto (Generalização)**: Base para `Bebida` e `Pizza`.
+* **Produto (Generalização)**: Base para Bebidas e Insumos.
+    * `ID_Produto` (PK)
+    * `Nome`: Nome comercial.
+    * `Tipo_Produto`: Categoria (Bebida, Pizza, etc).
+    * `Preco_Pontos`: Custo para resgate via fidelidade.
 
-    * `Bebida`: refere-se a especialização de produtos que diz respeito as bebidas vendidas na pizzaria.
-        * `Quantidade`: Quantidade de unidades da bebida em estoque.
-        * `Preço`: Preço da unidade da bebida em reais. 
-    
-    * `Pizza`: Contém a lógica de montagem.
+* **Bebida (Especialização)**: 
+    * `Quantidade`: Estoque atual disponível.
+    * `Preco_Venda`: Valor padrão de venda.
+    * `Volume_ML`: Capacidade da embalagem.
 
-* **Item_Pedido**: Registro histórico da venda.
-    * `Quantidade`: Volume de unidades do produto ou pizza adicionadas ao pedido.
-    * `Preço_Vendido`: O valor final da unidade registrado no momento da transação, incluindo o preço base e eventuais adicionais de borda ou descontos. 
-    * `Observação`: Detalhamento de instruções customizadas pelo cliente para aquele item específico (ex: "sem cebola", "massa bem assada").
+* **Pizza**: Item complexo composto por múltiplos sabores e customizações.
+    * `Observação`: Instruções de preparo (ex: "sem cebola").
 
-* **Sabor**:  Entidade que define o recheio (ex: Calabresa, Marguerita)
-    * `ID_Sabor`: (PK), identificador único de sabor.
-    * `Descricao`: Contém os ingredientes inclusos no sabor.
-    * `Disponível`: Diz se o sabor está ou não disponível para venda.
+* **Item_Pedido**: Linha da comanda que vincula o pedido ao produto/pizza.
+    * `Quantidade`: Volume de unidades vendidas.
+    * `Tipo_Item`: Identificador de categoria (Pizza ou Bebida).
+    * `Preço_Vendido`: Valor unitário congelado no ato da venda.
+    * `Observação`: Notas específicas do item.
 
-* **Tamanho:** Define as dimensões de uma Pizza
-    * `ID_Tamanho`: (PK) Identificador único de tamanho.
-    * `Qtd_Sabor_Max`: Qual é a quantidade máxima de sabores permitidos por tamanho de pizza (ex: Pizza G só pode dois sabores)
-    * `Nome_Tamanho`: Nome do tamanho da pizza (ex: Broto, Média, Grande) / Borda**: Componentes de customização da pizza.
+* **Sabor**: Definição do recheio da pizza.
+    * `ID_Sabor` (PK)
+    * `Nome_Sabor`: Nome comercial.
+    * `Ingredientes`: Composição para o pizzaiolo.
+    * `Disponível`: Status de estoque dos insumos do sabor.
+    * `Preco_Pontos`: Custo de resgate específico por sabor.
 
-* **Precificado (Relacionamento com Atributo)**:Liga Sabor + Tamanho para definir o Preço base da combinação.
-    * `Preco`: Preço de uma pizza baseando em seu tamanho e sabor.
+* **Tamanho**: Dimensões da pizza.
+    * `ID_Tamanho` (PK)
+    * `Nome_Tamanho`: Broto, Média, Grande, Gigante.
+    * `Qtd_Sabor_Max`: Limite de fracionamento (ex: G permite 2 sabores).
 
-* **Borda**: Entidade que representa a borda de uma pizza.
-    * `ID_Borda`: (PK) Identificador único de borda.
-    * `Tipo`: Borda de chocolate, catupiry, chedddar, etc.
-    * `Preco_Adicional`: Preço referente à inclusão da borda em uma pizza.
+* **Borda**: Opcional de crosta recheada.
+    * `ID_Borda` (PK)
+    * `Tipo`: Chocolate, Catupiry, Cheddar, etc.
+    * `Preco_Adicional`: Valor somado ao preço base da pizza.
 
-* **Promoção**: Entidade que refere-se a promoções existentes no cardápio de Produtos.
-    * `ID_Promo`: (PK) Identificador único da promoção.
-    * `Nome`: Nome da promoção (ex: Sexta-Feira da Pizza Maluca)
-    * `Status`: Se a promoção está ativa ou não.
-    * `Valor_Desconto`: Valor ao ser descontado caso os produtos escolhidos pelo cliente correspondam à combinação de produtos da promoção.
+* **Promoção**: Regras de desconto.
+    * `ID_Promo` (PK)
+    * `Nome`: Nome da campanha.
+    * `Status`: Ativa ou Inativa.
+    * `Valor_Desconto`: Valor bruto a ser deduzido.
 
+### 2.4 Módulo Financeiro (Caixa)
+* **Caixa**: Sessão diária de movimentação financeira.
+    * `ID_Caixa` (PK)
+    * `Data_Abertura`: Início do turno.
+    * `Data_Fechamento`: Encerramento do turno.
+    * `Valor_Abertura`: Fundo de troco inicial.
+    * `Valor_Fechamento_Esperado`: Saldo calculado pelo sistema (Abertura + Entradas - Saídas).
+    * `Valor_Fechamento_Informado`: Valor contado fisicamente pelo operador.
+    * `Status`: Aberto ou Fechado.
+    * `Observacao`: Notas de quebra de caixa ou ocorrências.
 
-### 2.4 Pagamento
+* **Fluxo_Caixa**: Registro de movimentações individuais.
+    * `ID_Movimentacao` (PK)
+    * `Tipo_Movimentacao`: Venda, Suprimento (entrada), Sangria (saída), Acerto Motoboy.
+    * `Forma_Pagamento`: Dinheiro, Pix, Cartão Crédito, Cartão Débito.
+    * `Valor`: Valor da transação.
+    * `Descricao`: Motivo detalhado da movimentação.
+    * `Data_Hora`: Carimbo de tempo do lançamento.
 
-* **Pagamento**: Entidade que refere-se ao pagamento realizado em um pedido.
-    * `ID_Transação`: (PK) Identificador único de uma transação.
-    * `Forma_Pagamento`: Método de pagamento realizado por um cliente. (ex: crédito, débito, pix, dinheiro)
-    * `Valor_Pago`: Valor pago referente a aquela transação com um uma forma de pagamento em específico.
+* **Pagamento**: Vínculo entre o Pedido e o Fluxo de Caixa.
+    * `ID_Transacao` (PK)
+    * `Forma_Pagamento`: Método utilizado.
+    * `Valor_Pago`: Quantia liquidada.
+
 ---
 
 ## 3. Relacionamentos
 
 | Relacionamento | Entidades Relacionadas | Cardinalidade | Descrição |
 | :--- | :--- | :--- | :--- |
-| **Entrega** | Motoboy : Pedido | 1 : N | Um motoboy pode ser responsável por várias entregas. |
-| **Realiza** | Cliente : Pedido | 1 : N | Um cliente pode realizar vários pedidos. |
-| **Recebe** | Pedido : Pagamento | 1 : N | Um pedido pode ser pago com uma ou mais formas de pagamento. |
-| **Registra** | Pedido : Historico_Status | 1 : N | Entidade Fraca: Armazena o "filme" das mudanças de estado do pedido. |
-| **Possui** | Pizza : Sabor | N : M | Permite a composição de pizzas fracionadas (1/2, 1/3, etc). |
-| **Tem** | Pizza : Borda | N : 1 | Cada pizza possui exatamente um tipo de borda, enquanto um mesmo tipo de borda (ex: Catupiry) pode ser associado a múltiplas pizzas.|
-| **Inclui** | Pizza : Tamanho | 1 : N | Cada pizza contém um tamanho, enquanto um mesmo tipo de tamanho pode ser associado a múltiplas pizzas. |
-| **Valida_Produto** | Promoção : Produto | N : M | Define quais produtos (ex: Coca-Cola + Pizza) devem estar no carrinho para ativar um combo. |
-| **Valida_Sabor** | Promoção : Sabor | N : M | Restringe a promoção a sabores específicos (ex: "Terça da Mussarela" só vale para o sabor Mussarela). |
-| **Valida_Tamanho** | Promoção : Tamanho | N : M | Determina quais tamanhos participam da oferta (ex: "Promoção de Inauguração" válida apenas para pizzas Gigantes). |
-
-### 3.1. Atributos de Relacionamentos
-
-* **Entrega**
-    * `Taxa_Entrega`: Valor financeiro cobrado pelo deslocamento do motoboy para aquele pedido específico.
-    * `Quilometragem`: Distância percorrida para a realização da entrega, utilizada para controle logístico e cálculo de produtividade.
-
-* **Possui**
-    * `Fracao`: Define a proporção que o sabor ocupa na composição da pizza (ex: 0.5 para pizzas "meio a meio").
+| **Opera** | Usuario : Caixa | 1 : N | Um usuário abre/fecha vários caixas (rastreabilidade). |
+| **Contém** | Caixa : Fluxo_Caixa | 1 : N | Um caixa agrupa todas as entradas e saídas do turno. |
+| **Financeiro** | Pedido : Fluxo_Caixa | 1 : N | Uma venda gera registros no fluxo de caixa (pode ter múltiplas formas de pagto). |
+| **Entrega** | Motoboy : Pedido | 1 : N | Um motoboy realiza várias entregas. Atributos: Taxa, KM. |
+| **Realiza** | Cliente : Pedido | 1 : N | Um cliente realiza vários pedidos. |
+| **Registra** | Pedido : Historico_Status | 1 : N | Entidade Fraca: Armazena o "filme" das mudanças de estado. |
+| **Possui** | Item_Pedido : Sabor | N : M | Permite pizzas fracionadas (1/2, 1/3). Atributo: Fracao. |
+| **Configura** | Item_Pedido : Tamanho | N : 1 | Cada item pizza tem exatamente um tamanho definido. |
+| **Adiciona** | Item_Pedido : Borda | N : 1 | Cada item pizza pode ter uma borda específica. |
+| **Aplica** | Promoção : Produto/Sabor | N : M | Define quais itens ativam a promoção. |
 
 ---
 
 ## 4. Regras de Negócio
 
-1.  **Imutabilidade Financeira**: O `Preço_Vendido` é persistido no momento da criação do item. Se o preço do cardápio mudar amanhã, o faturamento de hoje permanece correto.
-2.  **Auditoria Operacional**: O `Historico_Status` permite calcular gargalos (ex: tempo médio na cozinha vs tempo médio na rua).
-3.  **Integridade de Dados (PostgreSQL)**: Uso de `ENUMs` para status e `CHECK CONSTRAINTS` para garantir que valores financeiros e quantidades nunca sejam negativos.
-4.  **Precisão Monetária**: Uso obrigatório de tipos `NUMERIC` para evitar erros de arredondamento.
-5.  **Histórico de Endereços**: Embora visualmente simplificado como atributo, o sistema suporta múltiplos endereços por pessoa para viabilizar o delivery.
-
----
-
+1.  **Obrigatoriedade de Caixa**: Não é permitido criar um `Pedido` se não houver um `Caixa` com status `Aberto`.
+2.  **Imutabilidade Financeira**: O `Preço_Vendido` no `Item_Pedido` é persistido no momento da criação, protegendo o faturamento histórico contra reajustes de cardápio.
+3.  **Auditoria RH**: Toda abertura e fechamento de caixa grava o `ID_Usuario` responsável, permitindo identificar erros de contagem.
+4.  **Estoque em Tempo Real**: Vendas de `Bebidas` decrementam automaticamente a `Quantidade` na tabela específica; cancelamentos devolvem o item ao estoque.
+5.  **Fidelidade Automática**: O `Saldo_Pontos` do cliente é atualizado proporcionalmente ao `Valor_Total` pago em cada venda (ex: R$ 10,00 = 1 ponto).

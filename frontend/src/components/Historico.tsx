@@ -34,7 +34,7 @@ export function Historico() {
           </div>
           <div className="bg-white p-6 rounded-[2rem] border-4 border-gray-100 shadow-xl text-right">
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Vendido</p>
-            <p className="text-4xl font-black text-green-700 italic leading-none">R$ {historicoPedidos.filter(p => p.status === 'Finalizado').reduce((acc, p) => acc + p.valor_total, 0).toFixed(2)}</p>
+            <p className="text-4xl font-black text-green-700 italic leading-none">R$ {historicoPedidos.filter(p => p.status === 'Finalizado').reduce((acc, p) => acc + (p.valor_total || p.total || 0), 0).toFixed(2)}</p>
           </div>
         </div>
 
@@ -45,32 +45,38 @@ export function Historico() {
               <p className="font-black uppercase italic">Nenhum pedido processado hoje.</p>
             </div>
           ) : (
-            historicoPedidos.map(p => (
-              <button 
-                key={p.id_pedido} 
-                onClick={() => verDetalhes(p.id_pedido)}
-                className="w-full bg-white rounded-[2.5rem] border-4 border-gray-100 p-8 flex justify-between items-center shadow-md hover:shadow-2xl hover:border-blue-600/30 transition-all group"
-              >
-                <div className="flex items-center gap-8">
-                  <div className={`p-5 rounded-3xl transition-all ${p.status === 'Finalizado' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                    {p.status === 'Finalizado' ? <CheckCircle size={32} /> : <XCircle size={32} />}
-                  </div>
-                  <div className="text-left">
-                    <div className="flex items-center gap-4">
-                      <span className="text-3xl font-black italic tracking-tighter">#{p.id_pedido}</span>
-                      <span className="text-[10px] font-black text-gray-400 uppercase bg-gray-100 px-3 py-1 rounded-full">{new Date(p.data_hora).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            historicoPedidos.map(p => {
+              const idPedido = p.id_pedido || p.id;
+              const valorTotal = p.valor_total || p.total || 0;
+              return (
+                <button 
+                  key={idPedido} 
+                  onClick={() => verDetalhes(idPedido)}
+                  className="w-full bg-white rounded-[2.5rem] border-4 border-gray-100 p-8 flex justify-between items-center shadow-md hover:shadow-2xl hover:border-blue-600/30 transition-all group"
+                >
+                  <div className="flex items-center gap-8">
+                    <div className={`p-5 rounded-3xl transition-all ${p.status === 'Finalizado' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                      {p.status === 'Finalizado' ? <CheckCircle size={32} /> : <XCircle size={32} />}
                     </div>
-                    <p className="font-black text-lg uppercase text-gray-950 mt-1">{p.cliente}</p>
+                    <div className="text-left">
+                      <div className="flex items-center gap-4">
+                        <span className="text-3xl font-black italic tracking-tighter">#{idPedido}</span>
+                        <span className="text-[10px] font-black text-gray-400 uppercase bg-gray-100 px-3 py-1 rounded-full">
+                          {p.hora || (p.data_hora ? new Date(p.data_hora).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--')}
+                        </span>
+                      </div>
+                      <p className="font-black text-lg uppercase text-gray-950 mt-1">{p.cliente}</p>
+                    </div>
                   </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-3xl font-black text-gray-950 italic leading-none mb-2">R$ {p.valor_total.toFixed(2)}</p>
-                  <span className={`text-[10px] font-black uppercase px-4 py-1.5 rounded-full ${p.status === 'Finalizado' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
-                    {p.status}
-                  </span>
-                </div>
-              </button>
-            ))
+                  <div className="text-right">
+                    <p className="text-3xl font-black text-gray-950 italic leading-none mb-2">R$ {valorTotal.toFixed(2)}</p>
+                    <span className={`text-[10px] font-black uppercase px-4 py-1.5 rounded-full ${p.status === 'Finalizado' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+                      {p.status}
+                    </span>
+                  </div>
+                </button>
+              );
+            })
           )}
         </div>
       </div>
@@ -82,7 +88,7 @@ export function Historico() {
             <div className={`p-10 text-white flex justify-between items-center ${detalhe.status === 'Finalizado' ? 'bg-green-600' : 'bg-red-600'}`}>
                <div>
                   <h3 className="text-4xl font-black uppercase italic leading-none">Pedido #{detalhe.id_pedido}</h3>
-                  <p className="text-[10px] font-black uppercase opacity-70 mt-2">{new Date(detalhe.data_hora).toLocaleString()}</p>
+                  <p className="text-[10px] font-black uppercase opacity-70 mt-2">{detalhe.data_hora ? new Date(detalhe.data_hora).toLocaleString() : '--/--/---- --:--'}</p>
                </div>
                <button onClick={() => setDetalhe(null)} className="p-3 bg-black/10 rounded-full hover:bg-black/20"><X size={32}/></button>
             </div>
@@ -92,8 +98,8 @@ export function Historico() {
                 <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-1">
                         <p className="text-[10px] font-black text-gray-400 uppercase">Cliente</p>
-                        <p className="font-black text-gray-950 uppercase">{detalhe.cliente.nome}</p>
-                        <p className="text-xs font-bold text-gray-400">{detalhe.cliente.cpf}</p>
+                        <p className="font-black text-gray-950 uppercase">{detalhe.cliente?.nome || detalhe.cliente_nome || 'Visitante'}</p>
+                        <p className="text-xs font-bold text-gray-400">{detalhe.cliente?.cpf || '---'}</p>
                     </div>
                     <div className="space-y-1 text-right">
                         <p className="text-[10px] font-black text-gray-400 uppercase">Local de Entrega</p>

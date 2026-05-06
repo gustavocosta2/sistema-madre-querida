@@ -75,3 +75,49 @@ def excluir_promocao(id_promo: int, db: Session = Depends(database.get_db)):
     db.delete(promo)
     db.commit()
     return {"status": "sucesso"}
+
+@router.get("/caixas/historico")
+def listar_historico_caixas(db: Session = Depends(database.get_db)):
+    # Lista todos os caixas fechados
+    caixas = db.query(models.Caixa).filter(models.Caixa.status == "Fechado").order_by(models.Caixa.data_fechamento.desc()).all()
+    return [{
+        "id_caixa": c.id_caixa,
+        "abertura": c.data_abertura,
+        "fechamento": c.data_fechamento,
+        "valor_abertura": float(c.valor_abertura),
+        "valor_esperado": float(c.valor_fechamento_esperado),
+        "valor_informado": float(c.valor_fechamento_informado or 0),
+        "diferenca": float((c.valor_fechamento_informado or 0) - c.valor_fechamento_esperado),
+        "status": c.status
+    } for c in caixas]
+
+@router.get("/caixas/{id_caixa}/detalhes")
+def detalhes_caixa_historico(id_caixa: int, db: Session = Depends(database.get_db)):
+    caixa = db.get(models.Caixa, id_caixa)
+    if not caixa: raise HTTPException(404, "Caixa não encontrado")
+    
+    # Resumo por forma de pagamento
+    resumo = db.query(
+        models.FluxoCaixa.forma_pagamento,
+        func.sum(models.FluxoCaixa.valor).label("total")
+    ).filter(models.FluxoCaixa.id_caixa == id_caixa).group_by(models.FluxoCaixa.forma_pagamento).all()
+    
+    # Movimentações detalhadas
+    movimentacoes = db.query(models.FluxoCaixa).filter(models.FluxoCaixa.id_caixa == id_caixa).order_by(models.FluxoCaixa.data_hora.asc()).all()
+    
+    return {
+        "id_caixa": caixa.id_caixa,
+        "data_abertura": caixa.data_abertura,
+        "data_fechamento": caixa.data_fechamento,
+        "valor_abertura": float(caixa.valor_abertura),
+        "valor_esperado": float(caixa.valor_fechamento_esperado),
+        "valor_informado": float(caixa.valor_fechamento_informado or 0),
+        "breakdown": {r.forma_pagamento: float(r.total) for r in resumo},
+        "movimentacoes": [{
+            "tipo": m.tipo_movimentacao,
+            "valor": float(m.valor),
+            "descricao": m.descricao,
+            "hora": m.data_hora.strftime("%H:%M") if m.data_hora else "--:--",
+            "forma": m.forma_pagamento
+        } for m in movimentacoes]
+    }

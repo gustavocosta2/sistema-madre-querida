@@ -1,12 +1,10 @@
 # Dicionário de Dados: Modelo Físico (PostgreSQL)
 
-Este documento fornece o mapeamento técnico completo do banco de dados da Pizzaria Madre Querida, detalhando metadados, restrições de integridade e a lógica física implementada.
+Este documento fornece o mapeamento técnico completo do banco de dados da Pizzaria Madre Querida, detalhando metadados, restrições de integridade e a lógica física implementada para uma operação estável e profissional.
 
 ---
 
 ## 1. Tipos de Dados Customizados (Enums)
-
-Para garantir a integridade dos estados do sistema, utilizamos tipos enumerados nativos do PostgreSQL:
 
 | Tipo | Valores Permitidos | Descrição |
 | :--- | :--- | :--- |
@@ -18,25 +16,24 @@ Para garantir a integridade dos estados do sistema, utilizamos tipos enumerados 
 ## 2. Módulo de Identidade e Segurança
 
 ### Tabela: `pessoas`
-Entidade base para o padrão de herança Table-Per-Type (TPT).
+Entidade base central para clientes e funcionários.
 
 | Coluna | Tipo | Restrições | Descrição |
 | :--- | :--- | :--- | :--- |
-| `cpf` | `VARCHAR(14)` | **PK**, `NOT NULL` | Identificador único nacional. Formato esperado: `000.000.000-00`. |
+| `cpf` | `VARCHAR(14)` | **PK**, `NOT NULL` | Identificador único nacional. Ex: `000.000.000-00`. |
 | `nome` | `VARCHAR(100)` | `NOT NULL` | Nome completo do indivíduo. |
-| `criado_em` | `TIMESTAMPTZ` | `DEFAULT NOW()` | Registro cronológico de inserção no sistema. |
+| `data_nascimento` | `DATE` | `NULLABLE` | Data para CRM e alertas de aniversário. |
+| `criado_em` | `TIMESTAMPTZ` | `DEFAULT NOW()` | Registro cronológico de inserção. |
 
 ### Tabela: `usuarios`
-Contas de acesso ao backend/frontend.
-
 | Coluna | Tipo | Restrições | Descrição |
 | :--- | :--- | :--- | :--- |
 | `id_usuario` | `SERIAL` | **PK** | Identificador autoincremental. |
 | `username` | `VARCHAR(50)` | `NOT NULL`, `UNIQUE` | Nome de login único. |
-| `senha_hash` | `VARCHAR(255)` | `NOT NULL` | Hash da senha (armazenado via BCrypt ou similar). |
+| `senha_hash` | `VARCHAR(255)` | `NOT NULL` | Hash da senha (PBKDF2-SHA256). |
 | `role` | `VARCHAR(20)` | `DEFAULT 'funcionario'` | Papel no sistema (`admin` ou `funcionario`). |
-| `ativo` | `BOOLEAN` | `DEFAULT TRUE` | Flag de controle de acesso (Soft Delete). |
-| `ultima_login` | `TIMESTAMPTZ` | `NULLABLE` | Registro do último acesso bem-sucedido. |
+| `ativo` | `BOOLEAN` | `DEFAULT TRUE` | Controle de acesso (Soft Delete). |
+| `ultima_login` | `TIMESTAMPTZ` | `NULLABLE` | Carimbo de tempo do último acesso bem-sucedido. |
 
 ---
 
@@ -45,98 +42,117 @@ Contas de acesso ao backend/frontend.
 ### Tabela: `enderecos_pessoa`
 | Coluna | Tipo | Restrições | Descrição |
 | :--- | :--- | :--- | :--- |
-| `id_endereco` | `SERIAL` | **PK** | Identificador único do endereço. |
-| `cpf_pessoa` | `VARCHAR(14)` | **FK** (`pessoas.cpf`), `NOT NULL` | Referência à pessoa dona do endereço. `ON DELETE CASCADE`. |
-| `logradouro` | `VARCHAR(100)` | `NOT NULL` | Nome da rua, avenida, etc. |
-| `numero` | `VARCHAR(10)` | `NULLABLE` | Número da residência ou S/N. |
-| `complemento` | `VARCHAR(50)` | `NULLABLE` | Apto, bloco, casa de fundos, etc. |
-| `bairro` | `VARCHAR(50)` | `NULLABLE` | Bairro para cálculo de logística. |
-| `cidade` | `VARCHAR(50)` | `DEFAULT 'São João del Rei'` | Cidade de operação principal. |
-| `cep` | `VARCHAR(9)` | `NULLABLE` | Código de Endereçamento Postal. |
-| `ponto_referencia`| `TEXT` | `NULLABLE` | Descrição para auxiliar o motoboy. |
-| `e_principal` | `BOOLEAN` | `DEFAULT FALSE` | Indica se é o endereço padrão para entregas. |
+| `id_endereco` | `SERIAL` | **PK** | ID único do endereço. |
+| `cpf_pessoa` | `VARCHAR(14)` | **FK** (`pessoas.cpf`), `NOT NULL` | Vínculo com a pessoa dona do endereço. |
+| `logradouro` | `VARCHAR(100)` | `NOT NULL` | Rua, Avenida, Praça. |
+| `numero` | `VARCHAR(10)` | `NULLABLE` | Número ou S/N. |
+| `bairro` | `VARCHAR(50)` | `NULLABLE` | Bairro para zoneamento logístico. |
+| `cep` | `VARCHAR(9)` | `NULLABLE` | Código Postal (00000-000). |
+| `ponto_referencia` | `TEXT` | `NULLABLE` | Apoio visual para o entregador. |
+| `e_principal` | `BOOLEAN` | `DEFAULT FALSE` | Indica se é o endereço padrão. |
 
 ### Tabela: `clientes`
 | Coluna | Tipo | Restrições | Descrição |
 | :--- | :--- | :--- | :--- |
-| `cpf_cliente` | `VARCHAR(14)` | **PK**, **FK** (`pessoas.cpf`) | Herança de `pessoas`. `ON DELETE CASCADE`. |
-| `saldo_pontos` | `INTEGER` | `DEFAULT 0`, `CHECK >= 0` | Saldo acumulado no programa de fidelidade. |
-| `ultima_visita` | `TIMESTAMPTZ` | `NULLABLE` | Data da última compra registrada. |
+| `cpf_cliente` | `VARCHAR(14)` | **PK**, **FK** (`pessoas.cpf`) | Herança da entidade Pessoa. |
+| `saldo_pontos` | `INTEGER` | `DEFAULT 0` | Pontuação acumulada para troca. |
+| `observacao` | `TEXT` | `NULLABLE` | Notas de CRM (ex: "cliente alérgico a camarão"). |
+| `ativo` | `BOOLEAN` | `DEFAULT TRUE` | Status de atividade do cliente. |
+| `ultima_visita` | `TIMESTAMPTZ` | `NULLABLE` | Data da última interação de compra. |
 
 ---
 
-## 4. Catálogo de Produtos e Precificação
+## 4. RH e Equipe
+
+### Tabela: `funcionarios`
+| Coluna | Tipo | Restrições | Descrição |
+| :--- | :--- | :--- | :--- |
+| `cpf_funcionario` | `VARCHAR(14)` | **PK**, **FK** (`pessoas.cpf`) | Herança da entidade Pessoa. |
+| `cargo` | `VARCHAR(50)` | `NOT NULL` | Função (Pizzaiolo, Atendente, Gerente). |
+| `salario` | `NUMERIC(10,2)` | `CHECK >= 0` | Remuneração mensal base. |
+| `data_admissao` | `DATE` | `DEFAULT CURRENT_DATE` | Início do vínculo empregatício. |
+| `ativo` | `BOOLEAN` | `DEFAULT TRUE` | Status de atividade. |
+
+---
+
+## 5. Catálogo, Precificação e Itens
 
 ### Tabela: `produtos`
-Entidade genérica para itens de venda.
-
 | Coluna | Tipo | Restrições | Descrição |
 | :--- | :--- | :--- | :--- |
-| `id_produto` | `SERIAL` | **PK** | Identificador único global do produto. |
-| `nome` | `VARCHAR(100)` | `NOT NULL` | Nome comercial do item. |
-| `disponivel` | `BOOLEAN` | `DEFAULT TRUE` | Controla visibilidade no PDV (Soft Toggle). |
-| `descricao` | `TEXT` | `NULLABLE` | Detalhamento técnico ou ingredientes. |
-| `tipo_produto` | `VARCHAR(20)` | `NOT NULL` | Discriminador de tipo: `Bebida`, `Pizza`, `Adicional`. |
-| `preco_pontos` | `INTEGER` | `DEFAULT 0` | Valor em pontos necessário para resgate. |
-
-### Tabela: `precificado` (Matriz Sabor x Tamanho)
-Esta tabela resolve a complexidade de preços dinâmicos por tamanho.
-
-| Coluna | Tipo | Restrições | Descrição |
-| :--- | :--- | :--- | :--- |
-| `id_sabor` | `INT` | **CPK**, **FK** (`sabores.id_sabor`) | Referência ao sabor. `ON DELETE CASCADE`. |
-| `id_tamanho` | `INT` | **CPK**, **FK** (`tamanhos.id_tamanho`) | Referência ao tamanho. `ON DELETE CASCADE`. |
-| `preco_base` | `NUMERIC(10,2)` | `NOT NULL`, `CHECK > 0` | Valor base do sabor para aquele tamanho específico. |
-
----
-
-## 5. Vendas e Operações
-
-### Tabela: `pedidos`
-| Coluna | Tipo | Restrições | Descrição |
-| :--- | :--- | :--- | :--- |
-| `id_pedido` | `SERIAL` | **PK** | Número do pedido para o cliente. |
-| `id_cliente` | `VARCHAR(14)` | **FK** (`clientes.cpf_cliente`) | Opcional para vendas balcão/anônimas. |
-| `status` | `status_pedido_enum`| `DEFAULT 'Recebido'` | Estado atual no fluxo de produção. |
-| `origem` | `origem_pedido_enum`| `DEFAULT 'WhatsApp'` | Canal por onde o pedido foi realizado. |
-| `valor_total` | `NUMERIC(10,2)` | `DEFAULT 0`, `CHECK >= 0` | Soma final (Itens + Taxa - Descontos). |
-| `taxa_entrega` | `NUMERIC(10,2)` | `DEFAULT 0`, `CHECK >= 0` | Valor cobrado pelo serviço de entrega. |
-| `data_hora_criacao`| `TIMESTAMPTZ` | `DEFAULT NOW()` | Timestamp de abertura do pedido. |
+| `id_produto` | `SERIAL` | **PK** | ID Global do produto/item. |
+| `nome` | `VARCHAR(100)` | `NOT NULL` | Nome exibido no PDV. |
+| `tipo_produto` | `VARCHAR(20)` | `NOT NULL` | 'Pizza', 'Bebida', 'Acompanhamento'. |
+| `preco_pontos` | `INTEGER` | `DEFAULT 0` | Valor em pontos para resgate. |
 
 ### Tabela: `itens_pedido`
 | Coluna | Tipo | Restrições | Descrição |
 | :--- | :--- | :--- | :--- |
 | `id_item` | `SERIAL` | **PK** | Identificador da linha do pedido. |
-| `id_pedido` | `INT` | **FK** (`pedidos.id_pedido`) | Vinculação ao cabeçalho. `ON DELETE CASCADE`. |
+| `id_pedido` | `INT` | **FK** (`pedidos.id_pedido`) | Vínculo com a comanda principal. |
 | `id_produto` | `INT` | **FK** (`produtos.id_produto`) | O que está sendo vendido. |
-| `quantidade` | `INTEGER` | `DEFAULT 1`, `CHECK > 0` | Quantidade de unidades do item. |
-| `preco_unitario_vendido` | `NUMERIC(10,2)` | `NOT NULL` | **Snapshot de Preço**: Garante que alterações futuras no cardápio não alterem o histórico de vendas. |
+| `tipo_item` | `VARCHAR(20)` | `NOT NULL` | 'Pizza' ou 'Bebida' (facilita filtragem UI). |
+| `quantidade` | `INTEGER` | `DEFAULT 1`, `CHECK > 0` | Volume de unidades vendidas. |
+| `preco_unitario_vendido`| `NUMERIC(10,2)` | `NOT NULL` | **Imutabilidade:** Preço no ato da venda. |
+| `observacao` | `TEXT` | `NULLABLE` | Notas da cozinha (ex: "sem cebola"). |
 
----
-
-## 6. Logística e Gestão de Entregas
-
-### Tabela: `motoboys`
-| Coluna | Tipo | Restrições | Descrição |
-| :--- | :--- | :--- | :--- |
-| `cpf_motoboy` | `VARCHAR(14)` | **PK**, **FK** (`funcionarios.cpf_funcionario`) | Herança de funcionários. `ON DELETE CASCADE`. |
-| `placa_veiculo` | `VARCHAR(10)` | `NOT NULL` | Identificação do veículo para rastreio. |
-| `tipo_vinculo` | `VARCHAR(20)` | `DEFAULT 'Freelancer'` | `Próprio` ou `Freelancer`. |
-
----
-
-## 7. Histórico e Rastreabilidade
-
-### Tabela: `historico_status_pedido`
-Essencial para cálculos de Lead Time e auditoria.
+### Tabela: `item_pizza_detalhe`
+Extensão de Itens_Pedido para lógica de Pizzas.
 
 | Coluna | Tipo | Restrições | Descrição |
 | :--- | :--- | :--- | :--- |
-| `id_historico` | `SERIAL` | **PK** | Identificador único do log. |
-| `id_pedido` | `INT` | **FK** (`pedidos.id_pedido`) | Referência ao pedido auditado. `ON DELETE CASCADE`. |
-| `status` | `status_pedido_enum`| `NOT NULL` | Status que o pedido atingiu. |
-| `data_hora` | `TIMESTAMPTZ` | `DEFAULT NOW()` | Momento exato da transição. |
-| `observacao` | `TEXT` | `NULLABLE` | Motivo de cancelamento ou notas da cozinha. |
+| `id_item` | `INT` | **PK**, **FK** (`itens_pedido`) | Vínculo 1:1 com a linha do pedido. |
+| `id_tamanho` | `INT` | **FK** (`tamanhos`) | Tamanho da pizza. |
+| `id_borda` | `INT` | **FK** (`bordas`) | Borda escolhida. |
+
+### Tabela: `pizza_sabores`
+Composição do fracionamento da pizza.
+
+| Coluna | Tipo | Restrições | Descrição |
+| :--- | :--- | :--- | :--- |
+| `id_item` | `INT` | **CPK**, **FK** (`item_pizza_detalhe`) | Vínculo com a pizza customizada. |
+| `id_sabor` | `INT` | **CPK**, **FK** (`sabores`) | Sabor adicionado. |
+| `fracao` | `NUMERIC(3,2)` | `DEFAULT 1.00` | Proporção (ex: 0.50 para meia-a-meia). |
 
 ---
-*Documentação detalhada atualizada em 29 de Abril de 2026.*
+
+## 6. Módulo Financeiro e Auditoria
+
+### Tabela: `caixas`
+| Coluna | Tipo | Restrições | Descrição |
+| :--- | :--- | :--- | :--- |
+| `id_caixa` | `SERIAL` | **PK** | Identificador do turno de caixa. |
+| `id_usuario_abertura`| `INT` | **FK** (`usuarios`) | Quem iniciou o turno. |
+| `id_usuario_fechamento`| `INT` | **FK** (`usuarios`) | Quem encerrou o turno. |
+| `data_abertura` | `TIMESTAMPTZ` | `DEFAULT NOW()` | Carimbo de início. |
+| `data_fechamento` | `TIMESTAMPTZ` | `NULLABLE` | Carimbo de fim. |
+| `valor_abertura` | `NUMERIC(10,2)` | `DEFAULT 0` | Dinheiro inicial (troco). |
+| `valor_fechamento_esperado` | `NUMERIC(10,2)` | `DEFAULT 0` | Saldo teórico (Abertura + Entradas - Saídas). |
+| `valor_fechamento_informado` | `NUMERIC(10,2)` | `NULLABLE` | Saldo real contato pelo operador. |
+| `status` | `VARCHAR(20)` | `DEFAULT 'Aberto'` | `Aberto` ou `Fechado`. |
+| `observacao` | `TEXT` | `NULLABLE` | Ocorrências do turno. |
+
+### Tabela: `fluxo_caixa`
+| Coluna | Tipo | Restrições | Descrição |
+| :--- | :--- | :--- | :--- |
+| `id_movimentacao` | `SERIAL` | **PK** | Registro do lançamento financeiro. |
+| `id_caixa` | `INT` | **FK** (`caixas`) | Vínculo com o turno. |
+| `id_pedido` | `INT` | **FK** (`pedidos`), `NULLABLE` | Vínculo opcional se a origem for uma venda. |
+| `tipo_movimentacao` | `VARCHAR(20)` | `NOT NULL` | `Entrada Venda`, `Suprimento`, `Sangria`, `Acerto`. |
+| `forma_pagamento` | `VARCHAR(30)` | `NOT NULL` | `Dinheiro`, `Pix`, `Cartão Débito`, `Cartão Crédito`. |
+| `valor` | `NUMERIC(10,2)` | `CHECK >= 0` | Valor bruto da movimentação. |
+| `descricao` | `TEXT` | `NULLABLE` | Detalhamento (ex: "Compra de Gás"). |
+| `data_hora` | `TIMESTAMPTZ` | `DEFAULT NOW()` | Horário do lançamento. |
+
+---
+
+## 7. Regras de Deleção e Ciclo de Vida
+
+O banco de dados da Madre Querida implementa três estratégias para garantir a integridade histórica:
+
+1. **Cascata (`CASCADE`):** Endereços e Telefones são apagados se a Pessoa for removida. Itens de Pedido e Pagamentos são apagados se o Pedido for removido.
+2. **Restrição (`RESTRICT`):** O sistema impede apagar Sabores, Tamanhos ou Clientes que já possuam histórico de vendas, protegendo a auditoria financeira.
+3. **Lógica (`Soft Delete`):** Funcionários e Clientes possuem o campo `ativo`. Ao "excluir", o sistema apenas altera para `FALSE`, mantendo os dados para relatórios passados, mas ocultando-os das operações atuais.
+
+---
+*Documentação técnica atualizada em 06 de Maio de 2026, refletindo a implementação completa do Módulo Financeiro e Gestão de RH.*

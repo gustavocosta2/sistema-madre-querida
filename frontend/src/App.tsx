@@ -69,8 +69,8 @@ function App() {
       };
       await api.postPedido(payload);
       setCarrinho([]); setClienteSelecionado(null); setEnderecoEntrega(null); 
-      refreshOrders(); 
-      refreshAll(); // Atualiza estoque de bebidas, sabores, etc.
+      await refreshOrders(); 
+      await refreshAll(); // Atualiza estoque de bebidas, sabores, etc.
       alert("Pedido enviado com sucesso!");
     } catch (error: any) { 
       const msg = error.response?.data?.detail || "Erro desconhecido ao salvar pedido.";

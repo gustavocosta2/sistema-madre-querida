@@ -63,7 +63,7 @@ export function ConfigPizzaModal({ saborBase, sabores, tamanhos, bordas, precos,
                   onClick={() => handleSetTamanho(t)} 
                   className={`py-4 text-[10px] font-black uppercase rounded-xl border-2 transition-all ${tamanhoEscolhido.id_tamanho === t.id_tamanho ? 'border-gray-900 bg-gray-900 text-white shadow-lg' : 'bg-white text-gray-400 border-gray-100 hover:border-gray-300'}`}
                 >
-                  {t.nome_name || t.nome_tamanho}
+                  {t.nome_tamanho}
                 </button>
               ))}
             </div>
