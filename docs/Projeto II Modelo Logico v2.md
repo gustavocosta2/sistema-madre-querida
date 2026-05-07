@@ -182,3 +182,27 @@ Contas de acesso ao sistema.
 *   **`valor`** (NUMERIC(10,2)): Valor do lançamento.
 *   **`descricao`** (TEXT): Motivo detalhado.
 *   **`data_hora`** (TIMESTAMPTZ): Carimbo do registro.
+
+---
+
+## 3. Regras de Integridade Referencial
+
+Para garantir a consistência dos dados e a confiabilidade dos relatórios financeiros, o modelo lógico define as seguintes políticas de relacionamento:
+
+### 3.1 Propagação de Deleção (`ON DELETE CASCADE`)
+Aplicada a dependências existenciais onde o registro "filho" não faz sentido sem o "pai":
+*   **Identidade:** `enderecos_pessoa` e `telefones_pessoa` ➔ `pessoas`. (Apagar a pessoa remove todos os seus contatos).
+*   **Composição de Venda:** `itens_pedido`, `item_pizza_detalhe` e `pagamentos` ➔ `pedidos`. (Apagar um pedido limpa toda a sua estrutura financeira e itens).
+*   **Detalhamento Técnico:** `pizza_sabores` ➔ `item_pizza_detalhe`.
+
+### 3.2 Restrição de Deleção (`ON DELETE RESTRICT / NO ACTION`)
+Aplicada para blindar o histórico transacional e evitar "buracos" na auditoria:
+*   **Vendas Realizadas:** É proibido apagar um `Cliente`, `Motoboy` ou `Endereco` que possua vínculo com qualquer registro na tabela `pedidos`.
+*   **Sessões Financeiras:** É proibido apagar um `Usuario` ou uma sessão de `Caixa` que possua lançamentos registrados na tabela `fluxo_caixa`.
+*   **Cardápio Histórico:** `Sabores` e `Tamanhos` não podem ser removidos se houver registros de vendas (`itens_pedido`) associados a eles.
+
+### 3.3 Gestão de Nulidade (`SET NULL / DEFAULT`)
+*   **Rastreabilidade de Entrega:** Se um `Motoboy` for removido (e não tiver entregas realizadas), o campo `id_motoboy` em `pedidos` é mantido, mas em casos de cancelamento de escala, pode ser setado como nulo para reatribuição.
+
+---
+*Documentação de integridade lógica finalizada em 06 de Maio de 2026.*

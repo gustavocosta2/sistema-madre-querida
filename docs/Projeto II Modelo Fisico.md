@@ -155,4 +155,4 @@ O banco de dados da Madre Querida implementa três estratégias para garantir a 
 3. **Lógica (`Soft Delete`):** Funcionários e Clientes possuem o campo `ativo`. Ao "excluir", o sistema apenas altera para `FALSE`, mantendo os dados para relatórios passados, mas ocultando-os das operações atuais.
 
 ---
-*Documentação técnica atualizada em 06 de Maio de 2026, refletindo a implementação completa do Módulo Financeiro e Gestão de RH.*
+*Documentação técnica atualizada em 06 de Maio de 2026*
